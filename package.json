@@ -1,13 +1,40 @@
 {
-  "name": "eosdo-local",
+  "name": "eosdo",
   "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.4",
+  "engines": {
+    "bun": "1.4.4"
+  },
   "scripts": {
-    "start": "./scripts/start.sh",
-    "check": "node --check static/app.js",
-    "test:ui": "node tests/browser.mjs",
-    "test:dialogue": "node tests/dialogue.mjs"
+    "dev": "bun --bun vite --host 127.0.0.1",
+    "start": "bun src/server/index.ts",
+    "dev:server": "bun --watch src/server/index.ts",
+    "build": "bun --bun vite build",
+    "check": "bun check --no-script",
+    "format": "bun fmt --no-script src scripts tests index.html package.json tsconfig.json vite.config.ts",
+    "format:check": "bun fmt --no-script --check src scripts tests index.html package.json tsconfig.json vite.config.ts",
+    "lint": "oxlint --deny-warnings src scripts tests vite.config.ts",
+    "test": "bun test",
+    "services:up": "bun scripts/services.ts",
+    "services:down": "docker compose down",
+    "db:migrate": "bun src/server/store.ts",
+    "db:import": "bun src/server/import-sqlite.ts",
+    "test:integration": "RUN_INTEGRATION=1 bun test tests/server.test.ts",
+    "test:ui": "bun scripts/verify-ui.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.4",
+    "fastify": "5.12.7",
+    "solid-js": "1.9.17"
   },
   "devDependencies": {
-    "playwright": "1.58.2"
+    "@tailwindcss/vite": "4.3.3",
+    "@types/bun": "1.4.0",
+    "oxlint": "1.90.0",
+    "playwright": "1.58.2",
+    "tailwindcss": "4.3.3",
+    "vite": "7.3.7",
+    "vite-plugin-solid": "2.11.14"
   }
 }

@@ -1,3 +1,3 @@
 #!/bin/sh
 cd "$(dirname "$0")"
-exec ./scripts/start.sh --open
+exec "$HOME/.bun/bin/bun" scripts/start.ts --open

@@ -5,3 +5,14 @@ __pycache__/
 node_modules/
 test-results/
 .DS_Store
+dist/
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+# User-owned source documents; preserve directory instructions only.
+templates/*
+!templates/README.md
+!templates/Служебная записка.md
+!templates/Протокол.md
+!templates/Поручение.txt
