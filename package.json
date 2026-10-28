@@ -1,0 +1,13 @@
+{
+  "name": "eosdo-local",
+  "private": true,
+  "scripts": {
+    "start": "./scripts/start.sh",
+    "check": "node --check static/app.js",
+    "test:ui": "node tests/browser.mjs",
+    "test:dialogue": "node tests/dialogue.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.58.2"
+  }
+}
