@@ -1,0 +1,24 @@
+2026-10-29, Bun 1.4.4, macOS arm64, base c51161e + continuation changes.
+bun install --frozen-lockfile: exit 0 (mammoth/unpdf installed).
+bun run check: exit 0, 63 files.
+bun run lint: exit 0 (removed unused Value import).
+bun run format:check: exit 0, 67 files.
+bun test: exit 0, 36 pass, 4 skip (opt-in integration tests).
+bun run test:integration: exit 0, 40 pass, 0 fail, 361 expectations.
+bun run build: exit 0, Vite 7.3.7, 34 modules.
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=<existing chromium-1248 macOS executable> bun run test:ui:
+exit 0. UI passed: register, empty workspace, create, manual example upload,
+exact download/profile author, logout/login/reload, desktop/mobile,
+Knowledge pending-index search; no page errors.
+Artifacts (ignored): test-results/solid-desktop.png, solid-mobile.png,
+intelligence-pending-mobile.png.
+bun scripts/verify-intelligence.ts: exit 1. Actual local model did not produce
+ready record: model unavailable. curl 127.0.0.1:11434/api/tags: connection refused.
+Owner confirms no alternative Ollama address; record blocker.
+First attempt also failed before scenario due to missing mammoth; frozen install
+resolved dependency. Empty temporary DB left by setup failure was removed only
+after confirming no non-system tables. Later tests clean up temporary databases
+and S3 objects in finally. No test fixtures inserted into working database.
+Playwright's default browser version was absent; download stopped after an
+existing Chromium installation was found and successfully used via documented
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH override.

@@ -1,6 +1,6 @@
 import { Problem, now, uid } from "./domain";
 import { Store, type Services } from "./store";
-import type { RecordData, Value } from "./schema";
+import type { RecordData } from "./schema";
 import type { User } from "./workspace";
 
 export const factKinds = [

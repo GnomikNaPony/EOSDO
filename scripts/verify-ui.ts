@@ -201,9 +201,33 @@ try {
     path: "test-results/solid-mobile.png",
     fullPage: true,
   });
+  await page.goto(address + "/#/knowledge");
+  await page
+    .getByRole("heading", { name: "Данные из документов", exact: true })
+    .waitFor();
+  await page
+    .getByRole("heading", { name: "Обзор обработки · куратор", exact: true })
+    .waitFor();
+  await page
+    .getByRole("searchbox", { name: "Что нужно найти" })
+    .fill("проверка источника");
+  const semantic = page.waitForResponse((response) =>
+    response.url().includes("/api/intelligence/search?"),
+  );
+  await page
+    .getByRole("button", { name: "Найти по смыслу", exact: true })
+    .click();
+  if (!(await semantic).ok()) throw new Error("Pending semantic index failed");
+  await page
+    .getByText("Смысловой индекс ещё не готов.", { exact: false })
+    .waitFor();
+  await page.screenshot({
+    path: "test-results/intelligence-pending-mobile.png",
+    fullPage: true,
+  });
   if (errors.length) throw new Error(errors.join("\n"));
   console.log(
-    "UI passed: register, empty workspace, create, manual example upload, exact download/profile author, logout/login/reload, desktop/mobile; no page errors.",
+    "UI passed: register, empty workspace, create, manual example upload, exact download/profile author, logout/login/reload, desktop/mobile, Knowledge pending-index search; no page errors.",
   );
 } finally {
   for (const context of browser?.contexts() ?? []) {
