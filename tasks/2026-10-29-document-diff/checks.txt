@@ -1,0 +1,15 @@
+Runtime: Bun 1.4.4 (38afee6c8), macOS arm64.
+PATH prefix: /Users/aleksandrkiko/.bun/install/cache/@oven/bun-darwin-aarch64@1.4.4@@@1/bin
+PostgreSQL 16, Redis 7, MinIO: healthy Docker services. Test databases and objects are isolated and cleaned up.
+bun run check: exit 0, 69 files, no type errors.
+bun run lint: exit 0, no warnings.
+bun run format:check: exit 0, all 74 files formatted.
+bun run build: exit 0, 38 modules, index-JG7He4Br.js.
+bun test: exit 0, 39 pass / 5 skip / 0 fail, 276 assertions.
+bun run test:integration: exit 0, 44 pass / 0 skip / 0 fail, 476 assertions.
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/Users/aleksandrkiko/Library/Caches/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-mac-arm64/chrome-headless-shell bun run test:ui: exit 0.
+UI: desktop 1440x900, diff mobile 390x844, existing demo mobile 360/390; correct diff sides, anchored remark, resolution/history, late diff/navigation guards, no page errors.
+git diff --check: exit 0.
+Images: test-results/version-diff-desktop.png, test-results/version-diff-mobile.png (viewed).
+Only synthetic test data is used; request logs are omitted.
+Source manifest SHA-256: 75dfe23fbc1a1c842df12999d83a97dd50367a06ce4673001f3cbff1b5a47357

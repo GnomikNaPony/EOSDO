@@ -551,3 +551,92 @@
     min-width: min(300px, 85vw);
   }
 }
+
+.version-history {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0;
+  max-height: 18rem;
+  overflow: auto;
+}
+.version-history-entry {
+  display: grid;
+  gap: 0.25rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-left: 3px solid #94a3b8;
+  overflow-wrap: anywhere;
+}
+.version-history-entry.selected {
+  background: #eff6ff;
+  border-left-color: #2563eb;
+}
+.version-diff-dialog {
+  width: min(95vw, 1200px);
+  max-height: 90dvh;
+  margin: auto;
+  padding: 1.25rem;
+  border: 1px solid #cbd5e1;
+}
+.version-diff-dialog::backdrop {
+  background: rgb(2 6 23 / 45%);
+}
+.version-diff-scroll {
+  max-height: 60dvh;
+  overflow: auto;
+  border: 1px solid #cbd5e1;
+}
+.version-diff-table {
+  width: 100%;
+  min-width: 600px;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.version-diff-table th {
+  position: sticky;
+  top: 0;
+  background: #f1f5f9;
+  padding: 0.5rem;
+  text-align: left;
+  z-index: 1;
+}
+.version-diff-table td {
+  vertical-align: top;
+  border: 1px solid #e2e8f0;
+  padding: 0;
+}
+.diff-removed {
+  background: #fee2e2;
+}
+.diff-added {
+  background: #dcfce7;
+}
+.diff-line {
+  display: flex;
+  font: 0.8125rem/1.6 monospace;
+}
+.diff-number {
+  flex: 0 0 3rem;
+  text-align: right;
+  padding: 0.25rem 0.5rem;
+  color: #475569;
+  user-select: none;
+}
+.diff-text {
+  flex: 1;
+  min-width: 0;
+  padding: 0.25rem;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.diff-text:not(:disabled):hover {
+  outline: 1px solid #2563eb;
+  outline-offset: -1px;
+}
+.diff-text:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}

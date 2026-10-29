@@ -88,6 +88,107 @@ try {
   if (detail.versions[0]?.author_id !== initial.user.id)
     throw new Error("Upload is not attributed to the signed-in profile");
   const savedUrl = page.url();
+  // Independent before/after fixture: only the deadline line changes.
+  const oldLine = "- Срок: [календарная дата]";
+  const newLine = "- Срок: 31.12.2026";
+  await page.locator('[name="file"]').setInputFiles({
+    name: "revision.md",
+    mimeType: "text/markdown",
+    buffer: Buffer.from((await source.text()).replace(oldLine, newLine)),
+  });
+  await page.locator('[name="message"]').fill("Уточнён срок");
+  await page
+    .getByRole("button", { name: "Загрузить новую версию", exact: true })
+    .click();
+  await page.getByRole("button", { name: /v2 · Актуальная/ }).waitFor();
+  await page
+    .getByRole("button", { name: "Показать до / после", exact: true })
+    .click();
+  const comparison = page.getByRole("dialog", {
+    name: "Сравнение версий",
+    exact: true,
+  });
+  await comparison.waitFor();
+  if (
+    (
+      await comparison.locator(".diff-removed .diff-text").textContent()
+    )?.trim() !==
+      "− " + oldLine ||
+    (
+      await comparison.locator(".diff-added .diff-text").textContent()
+    )?.trim() !==
+      "+ " + newLine
+  )
+    throw new Error("Before/after does not isolate the changed deadline");
+  await mkdir("test-results", { recursive: true });
+  await page.screenshot({
+    path: "test-results/version-diff-desktop.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  if (
+    await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)
+  )
+    throw new Error("Diff dialog overflows mobile viewport");
+  await page.screenshot({
+    path: "test-results/version-diff-mobile.png",
+    fullPage: true,
+  });
+  await page.keyboard.press("Escape");
+  await comparison.waitFor({ state: "detached" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page
+    .getByRole("button", { name: "Показать до / после", exact: true })
+    .click();
+  await comparison.locator(".diff-removed .diff-text").click();
+  await page
+    .getByRole("heading", { name: "Замечания к версиям", exact: true })
+    .waitFor();
+  if ((await page.locator('[name="anchor"]').inputValue()) !== oldLine)
+    throw new Error("The diff anchor was not transferred to the remark");
+  const remarkVersion = await page.locator('[name="version_id"]').inputValue();
+  const firstVersion = (
+    await (
+      await page.request.get(address + "/api/documents/" + documentId)
+    ).json()
+  ).versions.find((v: { number: number }) => v.number === 1).id;
+  if (remarkVersion !== firstVersion)
+    throw new Error("Remark targets the wrong diff side");
+  await page.locator('[name="text"]').fill("Проверить срок до исправления");
+  await page.locator('[name="blocking"]').check();
+  await page
+    .getByRole("button", { name: "Добавить замечание", exact: true })
+    .click();
+  const remark = page
+    .locator("article.comment")
+    .filter({ hasText: "Проверить срок до исправления" });
+  await remark.waitFor();
+  await remark
+    .getByRole("button", { name: "Отметить исправление", exact: true })
+    .click();
+  await remark
+    .getByText("Исправление заявлено в v2", { exact: true })
+    .waitFor();
+  await remark
+    .getByRole("button", { name: "Подтвердить устранение", exact: true })
+    .click();
+  await remark
+    .getByText("Устранение подтверждено в v2", { exact: true })
+    .waitFor();
+  await remark.getByText("История замечания", { exact: true }).click();
+  if (
+    !(await remark.locator("details").textContent())?.includes(
+      "Исправлено · ожидает проверки → Устранение подтверждено",
+    )
+  )
+    throw new Error("The remark status history was not preserved");
+  await remark
+    .getByRole("button", { name: "Открыть исправление", exact: true })
+    .click();
+  await page
+    .getByRole("heading", { name: "Файлы и версии документа", exact: true })
+    .waitFor();
+
   const createdOther = await page.request.post(address + "/api/documents", {
     data: {
       title: "Другая карточка",
@@ -98,6 +199,56 @@ try {
   });
   if (!createdOther.ok()) throw new Error("Cannot create navigation target");
   const otherId = ((await createdOther.json()) as { id: string }).id;
+  // A late diff must not open over another document.
+  let releaseDiff!: () => void;
+  let diffStarted!: () => void;
+  const heldDiff = new Promise<void>((resolve) => {
+    releaseDiff = resolve;
+  });
+  const startedDiff = new Promise<void>((resolve) => {
+    diffStarted = resolve;
+  });
+  const diffPattern = "**/api/versions/*/diff*";
+  await page.route(diffPattern, async (route) => {
+    const response = await route.fetch();
+    diffStarted();
+    await heldDiff;
+    await route.fulfill({ response });
+  });
+  const diffResponse = page.waitForResponse((response) =>
+    response.url().includes("/diff"),
+  );
+  await page
+    .getByRole("button", { name: "Показать до / после", exact: true })
+    .click();
+  await startedDiff;
+  await page.evaluate((id) => {
+    location.hash = "/doc/" + id + "?tab=versions";
+  }, otherId);
+  await page.getByText("Другая карточка", { exact: true }).first().waitFor();
+  releaseDiff();
+  await diffResponse;
+  await page
+    .getByRole("button", { name: "Загрузить новую версию", exact: true })
+    .waitFor({ state: "visible" });
+  await page.waitForFunction(
+    () => !document.querySelector('button[type="submit"]:disabled'),
+  );
+  if (
+    await page
+      .getByRole("dialog", { name: "Сравнение версий", exact: true })
+      .count()
+  )
+    throw new Error("Late diff opened over another document");
+  await page.unroute(diffPattern);
+  await page.evaluate((id) => {
+    location.hash = "/doc/" + id + "?tab=versions";
+  }, documentId!);
+  await page
+    .getByRole("heading", { name: "Файлы и версии документа", exact: true })
+    .waitFor();
+  await page.getByRole("button", { name: /v2 · Актуальная/ }).waitFor();
+
   await page.locator('[name="file"]').setInputFiles({
     name: "race.txt",
     mimeType: "text/plain",
@@ -141,7 +292,7 @@ try {
   const originalDetail = (await (
     await page.request.get(address + "/api/documents/" + documentId)
   ).json()) as { versions: unknown[] };
-  if (otherDetail.versions.length || originalDetail.versions.length !== 2)
+  if (otherDetail.versions.length || originalDetail.versions.length !== 3)
     throw new Error("Navigation redirected upload to the wrong document");
   // Hold an earlier navigation response and finish a newer registry navigation first.
   let releaseNavigation!: () => void;
@@ -369,7 +520,7 @@ try {
   });
   if (errors.length) throw new Error(errors.join("\n"));
   console.log(
-    "UI passed: register, empty workspace, create, manual example upload, exact download/profile author, logout/login/reload, desktop/mobile, Knowledge pending-index search, fresh private demo on reload, mobile navigation/cards/modal at 360/390px, public QR page; no page errors.",
+    "UI passed: before/after diff desktop/mobile, exact-side anchored remark, version-bound resolution and immutable status history, register, empty workspace, create, manual example upload, exact download/profile author, logout/login/reload, desktop/mobile, Knowledge pending-index search, fresh private demo on reload, mobile navigation/cards/modal at 360/390px, public QR page; no page errors.",
   );
 } finally {
   for (const context of browser?.contexts() ?? []) {

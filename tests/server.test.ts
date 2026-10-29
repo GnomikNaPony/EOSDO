@@ -293,6 +293,331 @@ integration(
           })
         ).statusCode,
       ).toBe(409);
+      const firstDiff = (
+        await app.inject({ url: `/api/versions/${versionId}/diff`, headers })
+      ).json();
+      expect(firstDiff.before).toBeNull();
+      expect(firstDiff.added).toBe(1);
+      const secondUpload = await app.inject({
+        method: "POST",
+        url: `/api/documents/${id}/versions`,
+        headers,
+        payload: {
+          filename: "revision.txt",
+          content: Buffer.from(source.toString() + "\nДополнение").toString(
+            "base64",
+          ),
+          message: "Добавлено дополнение",
+          parent_id: versionId,
+        },
+      });
+      expect(secondUpload.statusCode).toBe(200);
+      const revisionId = secondUpload.json().id;
+      const compared = (
+        await app.inject({ url: `/api/versions/${revisionId}/diff`, headers })
+      ).json();
+      expect(compared.state).toBe("ready");
+      expect(compared.added).toBe(1);
+      expect(compared.removed).toBe(0);
+      expect(compared.lines[0].kind).toBe("equal");
+      expect(compared.lines[1]).toEqual({
+        kind: "add",
+        text: "Дополнение",
+        before: null,
+        after: 2,
+      });
+      expect(
+        (
+          await app.inject({
+            url: `/api/versions/${revisionId}/diff?base=${ownUpload.json().id}`,
+            headers,
+          })
+        ).statusCode,
+      ).toBe(400);
+      expect(
+        (
+          await app.inject({
+            url: `/api/versions/${revisionId}/diff?base=${revisionId}`,
+            headers,
+          })
+        ).statusCode,
+      ).toBe(400);
+      expect(
+        (
+          await app.inject({
+            url: `/api/versions/${revisionId}/diff`,
+            headers: secondHeaders,
+          })
+        ).statusCode,
+      ).toBe(403);
+      const anchored = await app.inject({
+        method: "POST",
+        url: "/api/comments",
+        headers,
+        payload: {
+          document_id: id,
+          version_id: revisionId,
+          text: "Проверить дополнение",
+          anchor: "Дополнение",
+          anchor_line: 2,
+        },
+      });
+      expect(anchored.statusCode).toBe(200);
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: "/api/comments",
+            headers,
+            payload: {
+              document_id: id,
+              version_id: versionId,
+              text: "Неверная цитата",
+              anchor: "Дополнение",
+            },
+          })
+        ).statusCode,
+      ).toBe(409);
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: "/api/comments",
+            headers,
+            payload: {
+              document_id: id,
+              version_id: revisionId,
+              text: "Поврежденная привязка",
+              anchor: "Дополнение",
+              anchor_line: 1,
+            },
+          })
+        ).statusCode,
+      ).toBe(409);
+      const statusUrl = `/api/comments/${comment.json().id}/status`;
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: statusUrl,
+            headers,
+            payload: { status: "addressed", version_id: versionId },
+          })
+        ).statusCode,
+      ).toBe(409);
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: statusUrl,
+            headers,
+            payload: {
+              status: "addressed",
+              expected_status: "open",
+              version_id: revisionId,
+            },
+          })
+        ).statusCode,
+      ).toBe(200);
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: statusUrl,
+            headers,
+            payload: {
+              status: "closed",
+              expected_status: "open",
+              version_id: revisionId,
+            },
+          })
+        ).statusCode,
+      ).toBe(409);
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: `/api/documents/${id}/status`,
+            headers,
+            payload: {
+              status: "approved",
+              version_id: revisionId,
+              manual_review: true,
+            },
+          })
+        ).statusCode,
+      ).toBe(409);
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: statusUrl,
+            headers,
+            payload: {
+              status: "closed",
+              expected_status: "addressed",
+              version_id: revisionId,
+            },
+          })
+        ).statusCode,
+      ).toBe(200);
+      const withEvents = (
+        await app.inject({ url: `/api/documents/${id}`, headers })
+      ).json();
+      const reviewed = withEvents.comments.find(
+        (c: { id: string }) => c.id === comment.json().id,
+      );
+      expect(reviewed.version_id).toBe(versionId);
+      expect(reviewed.resolved_version).toBe(revisionId);
+      expect(reviewed.events.map((e: { status: string }) => e.status)).toEqual([
+        "open",
+        "addressed",
+        "closed",
+      ]);
+      expect(
+        reviewed.events.every(
+          (e: { author_id: string }) => e.author_id === boot.user.id,
+        ),
+      ).toBe(true);
+      await expect(
+        store.put(
+          "comment_event",
+          { ...reviewed.events[1], status: "open" },
+          id,
+        ),
+      ).rejects.toThrow();
+      await expect(store.remove(reviewed.events[1].id)).rejects.toThrow();
+      const originalComment = (await store.get(comment.json().id, "comment"))!;
+      await expect(
+        store.put("comment", { ...originalComment, text: "Перезапись" }, id),
+      ).rejects.toThrow();
+      await expect(store.remove(String(originalComment.id))).rejects.toThrow();
+      await migrate(services.sql);
+      expect(
+        (await store.get(String(originalComment.id), "comment"))?.text,
+      ).toBe(originalComment.text);
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: `/api/documents/${id}/status`,
+            headers,
+            payload: {
+              status: "approved",
+              version_id: revisionId,
+              manual_review: true,
+            },
+          })
+        ).statusCode,
+      ).toBe(200);
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: `/api/comments/${comment.json().id}/reply`,
+            headers,
+            payload: { text: "Исправление проверено" },
+          })
+        ).statusCode,
+      ).toBe(200);
+      const savedReply = (await store.list("reply", id))[0]!;
+      await expect(
+        store.put("reply", { ...savedReply, text: "Перезапись" }, id),
+      ).rejects.toThrow();
+      await expect(store.remove(String(savedReply.id))).rejects.toThrow();
+      const thirdUpload = await app.inject({
+        method: "POST",
+        url: `/api/documents/${id}/versions`,
+        headers,
+        payload: {
+          filename: "third.txt",
+          content: Buffer.from(
+            source.toString() + "\nДополнение\nЕщё строка",
+          ).toString("base64"),
+          message: "Третья версия",
+          parent_id: revisionId,
+        },
+      });
+      expect(thirdUpload.statusCode).toBe(200);
+      const afterNewVersion = (
+        await app.inject({ url: `/api/documents/${id}`, headers })
+      ).json();
+      expect(afterNewVersion.status).toBe("review");
+      expect(afterNewVersion.approved_version).toBeNull();
+      const arbitrary = (
+        await app.inject({
+          url: `/api/versions/${thirdUpload.json().id}/diff?base=${versionId}`,
+          headers,
+        })
+      ).json();
+      expect(arbitrary.before.id).toBe(versionId);
+      expect(arbitrary.added).toBe(2);
+      const thirdSaved = (await store.get(thirdUpload.json().id, "version"))!;
+      await store.put("version", { ...thirdSaved, text: null }, id);
+      expect(
+        (
+          await app.inject({
+            url: `/api/versions/${thirdSaved.id}/diff`,
+            headers,
+          })
+        ).json().state,
+      ).toBe("unavailable");
+      await store.put(
+        "version",
+        { ...thirdSaved, text: source.toString() + "\nДополнение" },
+        id,
+      );
+      expect(
+        (
+          await app.inject({
+            url: `/api/versions/${thirdSaved.id}/diff`,
+            headers,
+          })
+        ).json().state,
+      ).toBe("identical");
+      const authorComment = await app.inject({
+        method: "POST",
+        url: "/api/comments",
+        headers,
+        payload: {
+          document_id: ownId,
+          version_id: ownUpload.json().id,
+          text: "Замечание исполнителю",
+          severity: "blocking",
+        },
+      });
+      expect(authorComment.statusCode).toBe(200);
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: `/api/comments/${authorComment.json().id}/status`,
+            headers: secondHeaders,
+            payload: { status: "closed", version_id: ownUpload.json().id },
+          })
+        ).statusCode,
+      ).toBe(403);
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: `/api/comments/${authorComment.json().id}/status`,
+            headers: secondHeaders,
+            payload: { status: "addressed", version_id: ownUpload.json().id },
+          })
+        ).statusCode,
+      ).toBe(200);
+      // Legacy imports may have numbered versions without parent_id.
+      const legacyId = crypto.randomUUID();
+      await store.put(
+        "version",
+        { ...thirdSaved, id: legacyId, number: 4, parent_id: null },
+        id,
+      );
+      const legacyDiff = (
+        await app.inject({ url: `/api/versions/${legacyId}/diff`, headers })
+      ).json();
+      expect(legacyDiff.before.id).toBe(thirdSaved.id);
       const saved = await store.get(versionId, "version");
       await store.put("version", { ...saved!, text: "Извлечённый текст" }, id);
       await expect(

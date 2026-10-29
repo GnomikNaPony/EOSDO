@@ -25,6 +25,7 @@ export interface Profile {
 export interface Version {
   id: string;
   number: number;
+  author_id: string;
   filename: string;
   created: string;
   text: string | null;
@@ -40,9 +41,19 @@ export interface Comment {
   author_id: string;
   text: string;
   anchor: string;
+  anchor_line?: number | null;
   severity: string;
   status: string;
   created: string;
+  resolved_version?: string | null;
+  events?: {
+    id: string;
+    author_id: string;
+    from_status: string | null;
+    status: string;
+    version_id: string;
+    created: string;
+  }[];
   replies: { id: string; author_id: string; text: string; created: string }[];
 }
 export interface Check {

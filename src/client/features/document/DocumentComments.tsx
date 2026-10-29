@@ -1,9 +1,50 @@
 import { useApp } from "../../app-store";
-import { For } from "solid-js";
-import { Show } from "solid-js";
+import { For, Show, createSignal, createEffect, on } from "solid-js";
 import { Button } from "../../components/ui";
+import { date } from "../../domain";
+const statusLabel = (status: string) =>
+  ({
+    open: "Открыто",
+    addressed: "Исправлено · ожидает проверки",
+    closed: "Устранение подтверждено",
+  })[status] ?? status;
 export function DocumentComments() {
-  const { data, doc, tab, busy, person, run, action } = useApp();
+  const {
+    data,
+    doc,
+    tab,
+    busy,
+    person,
+    run,
+    action,
+    version,
+    commentDraft,
+    setCommentDraft,
+    setVersionId,
+    changeTab,
+  } = useApp();
+  const [filter, setFilter] = createSignal("all");
+  const [selectedVersion, setSelectedVersion] = createSignal("");
+  const [anchor, setAnchor] = createSignal("");
+  const [anchorLine, setAnchorLine] = createSignal<number>();
+  createEffect(
+    on(
+      [() => doc()?.id, tab, commentDraft, () => version()?.id] as const,
+      ([documentId, currentTab, draft, versionId]) => {
+        if (currentTab !== "comments") return;
+        const selected =
+          draft && draft.document_id === documentId ? draft : undefined;
+        setSelectedVersion(selected?.version_id ?? versionId ?? "");
+        setAnchor(selected?.anchor ?? "");
+        setAnchorLine(selected?.anchor_line);
+        setFilter(selected?.version_id ?? "all");
+      },
+    ),
+  );
+  const versionLabel = (id: string | null | undefined) => {
+    const v = doc()?.versions.find((v) => v.id === id);
+    return v ? `v${v.number}` : "версия недоступна";
+  };
   return (
     <Show when={tab() === "comments"}>
       <section class="card-section">
@@ -12,23 +53,38 @@ export function DocumentComments() {
           class="space-y-3 py-4"
           onSubmit={(e) => {
             e.preventDefault();
-            const form = e.currentTarget;
+            const form = e.currentTarget,
+              documentId = doc()!.id;
+            const f = new FormData(form);
             void run(async () => {
-              const f = new FormData(form);
               await action("/api/comments", {
-                document_id: doc()?.id,
+                document_id: documentId,
                 version_id: f.get("version_id"),
                 text: f.get("text"),
                 anchor: f.get("anchor"),
+                anchor_line: anchorLine() ?? null,
                 severity: f.has("blocking") ? "blocking" : "normal",
               });
-              form.reset();
+              if (doc()?.id === documentId) {
+                form.reset();
+                setAnchor("");
+                setCommentDraft(undefined);
+              }
             });
           }}
         >
           <label class="field">
-            <span>Версия</span>
-            <select name="version_id" required>
+            <span>Версия замечания</span>
+            <select
+              name="version_id"
+              required
+              value={selectedVersion()}
+              onChange={(e) => {
+                setSelectedVersion(e.currentTarget.value);
+                setAnchor("");
+                setAnchorLine(undefined);
+              }}
+            >
               <For each={doc()?.versions}>
                 {(v) => (
                   <option value={v.id}>
@@ -40,7 +96,16 @@ export function DocumentComments() {
           </label>
           <label class="field">
             <span>Цитата из документа</span>
-            <input name="anchor" maxlength="2000" />
+            <textarea
+              name="anchor"
+              maxlength="1000"
+              rows="2"
+              value={anchor()}
+              onInput={(e) => {
+                setAnchor(e.currentTarget.value);
+                setAnchorLine(undefined);
+              }}
+            />
           </label>
           <label class="field">
             <span>Замечание *</span>
@@ -59,86 +124,189 @@ export function DocumentComments() {
             </Button>
           </div>
         </form>
-        <For each={doc()?.comments}>
-          {(c) => (
-            <article class="comment border-t border-slate-200 py-4">
-              <div class="flex justify-between">
-                <b>{person(c.author_id)}</b>
-                <span>
-                  {c.status === "closed"
-                    ? "Закрыто"
-                    : c.status === "addressed"
-                      ? "Исправлено"
-                      : "Открыто"}{" "}
-                  {c.severity === "blocking" ? "· Обязательное" : ""}
-                </span>
-              </div>
-              <Show when={c.anchor}>
-                <blockquote class="border-l-2 border-blue-200 pl-3 my-2">
-                  {c.anchor}
-                </blockquote>
-              </Show>
-              <p class="whitespace-pre-wrap">{c.text}</p>
-              <For each={c.replies}>
-                {(r) => (
-                  <p>
-                    <b>{person(r.author_id)}: </b>
-                    {r.text}
+        <label class="field mb-4">
+          <span>Показать замечания</span>
+          <select
+            aria-label="Фильтр замечаний по версии"
+            value={filter()}
+            onChange={(e) => setFilter(e.currentTarget.value)}
+          >
+            <option value="all">Все версии</option>
+            <For each={doc()?.versions}>
+              {(v) => <option value={v.id}>v{v.number}</option>}
+            </For>
+          </select>
+        </label>
+        <p class="text-sm mb-3">
+          Новая версия не закрывает замечания автоматически. Исполнитель
+          отмечает исправление, куратор подтверждает его после проверки.
+        </p>
+        <Show
+          when={
+            doc()?.comments.filter(
+              (c) => filter() === "all" || c.version_id === filter(),
+            ).length
+          }
+          fallback={<p class="py-4">Замечаний к выбранным версиям нет.</p>}
+        >
+          <For
+            each={doc()?.comments.filter(
+              (c) => filter() === "all" || c.version_id === filter(),
+            )}
+          >
+            {(c) => (
+              <article class="comment border-t border-slate-200 py-4">
+                <div class="flex flex-wrap justify-between gap-2">
+                  <b>
+                    {person(c.author_id)} · {versionLabel(c.version_id)}
+                  </b>
+                  <span>
+                    {statusLabel(c.status)}
+                    {c.severity === "blocking" ? " · Обязательное" : ""}
+                  </span>
+                </div>
+                <small>{date(c.created)}</small>
+                <Show when={c.anchor_line}>
+                  <small>Строка {c.anchor_line}</small>
+                </Show>
+                <Show when={c.anchor}>
+                  <blockquote class="border-l-2 border-blue-200 pl-3 my-2 whitespace-pre-wrap">
+                    {c.anchor}
+                  </blockquote>
+                </Show>
+                <p class="whitespace-pre-wrap">{c.text}</p>
+                <Show when={c.resolved_version}>
+                  <p class="my-2">
+                    {c.status === "closed"
+                      ? "Устранение подтверждено в"
+                      : "Исправление заявлено в"}{" "}
+                    {versionLabel(c.resolved_version)}
                   </p>
-                )}
-              </For>
-              <form
-                class="flex gap-2 my-3"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const form = e.currentTarget;
-                  void run(async () => {
-                    await action(`/api/comments/${c.id}/reply`, {
-                      text: new FormData(form).get("text"),
-                    });
-                    form.reset();
-                  });
-                }}
-              >
-                <input
-                  name="text"
-                  required
-                  placeholder="Ответ на замечание"
-                  class="flex-1"
-                />
-                <Button type="submit">Ответить</Button>
-              </form>
-              <div class="flex gap-2">
-                <For
-                  each={
-                    data()?.user?.role === "curator"
-                      ? ["open", "closed"]
-                      : ["addressed"]
-                  }
-                >
-                  {(s) => (
+                </Show>
+                <div class="flex flex-wrap gap-2 my-2">
+                  <Button
+                    onClick={() => {
+                      setVersionId(c.version_id);
+                      changeTab("versions");
+                    }}
+                  >
+                    Открыть исходную версию
+                  </Button>
+                  <Show when={c.resolved_version}>
                     <Button
-                      onClick={() =>
-                        void run(() =>
-                          action(`/api/comments/${c.id}/status`, {
-                            status: s,
-                            version_id: doc()?.versions[0]?.id,
-                          }),
-                        )
-                      }
+                      onClick={() => {
+                        setVersionId(c.resolved_version!);
+                        changeTab("versions");
+                      }}
                     >
-                      {s === "closed"
-                        ? "Подтвердить устранение"
-                        : s === "addressed"
-                          ? "Отметить исправление"
-                          : "Открыть повторно"}
+                      Открыть исправление
                     </Button>
+                  </Show>
+                </div>
+                <For each={c.replies}>
+                  {(r) => (
+                    <p class="my-2 whitespace-pre-wrap">
+                      <b>{person(r.author_id)}: </b>
+                      {r.text} <small>· {date(r.created)}</small>
+                    </p>
                   )}
                 </For>
-              </div>
-            </article>
-          )}
-        </For>
+                <form
+                  class="flex gap-2 my-3"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const form = e.currentTarget;
+                    const commentId = c.id,
+                      text = new FormData(form).get("text");
+                    void run(async () => {
+                      await action(`/api/comments/${commentId}/reply`, {
+                        text,
+                      });
+                      form.reset();
+                    });
+                  }}
+                >
+                  <input
+                    name="text"
+                    required
+                    maxlength="5000"
+                    placeholder="Ответ на замечание"
+                    aria-label="Ответ на замечание"
+                    class="flex-1 min-w-0"
+                  />
+                  <Button type="submit" disabled={busy()}>
+                    Ответить
+                  </Button>
+                </form>
+                <div class="flex flex-wrap gap-2">
+                  <For
+                    each={
+                      data()?.user?.role === "curator"
+                        ? ["open", "addressed", "closed"]
+                        : ["addressed"]
+                    }
+                  >
+                    {(s) => (
+                      <Button
+                        disabled={
+                          busy() ||
+                          (s === c.status &&
+                            (s === "open" ||
+                              c.resolved_version === doc()?.versions[0]?.id))
+                        }
+                        onClick={() => {
+                          const commentId = c.id,
+                            latestId = doc()?.versions[0]?.id,
+                            expectedStatus = c.status;
+                          void run(() =>
+                            action(`/api/comments/${commentId}/status`, {
+                              status: s,
+                              version_id: latestId,
+                              expected_status: expectedStatus,
+                            }),
+                          );
+                        }}
+                      >
+                        {s === "closed"
+                          ? "Подтвердить устранение"
+                          : s === "addressed"
+                            ? "Отметить исправление"
+                            : "Открыть повторно"}
+                      </Button>
+                    )}
+                  </For>
+                </div>
+                <details class="my-3">
+                  <summary>История замечания</summary>
+                  <p>
+                    Создано: {person(c.author_id)} · {date(c.created)} ·{" "}
+                    {versionLabel(c.version_id)}
+                  </p>
+                  <For
+                    each={c.events?.filter(
+                      (event) => event.from_status !== null,
+                    )}
+                  >
+                    {(event) => (
+                      <p>
+                        {person(event.author_id)} · {date(event.created)}:{" "}
+                        {statusLabel(event.from_status!)} →{" "}
+                        {statusLabel(event.status)} ·{" "}
+                        {versionLabel(event.version_id)}
+                      </p>
+                    )}
+                  </For>
+                  <Show when={!c.events?.length}>
+                    <p class="text-sm">
+                      Подробная история статусов до включения версионирования не
+                      записывалась.
+                    </p>
+                  </Show>
+                </details>
+              </article>
+            )}
+          </For>
+        </Show>
       </section>
     </Show>
   );

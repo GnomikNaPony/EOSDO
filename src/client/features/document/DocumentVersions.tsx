@@ -1,12 +1,35 @@
 import { useApp } from "../../app-store";
-import { For } from "solid-js";
+import { For, createSignal, createEffect, on } from "solid-js";
+import type { VersionDiff } from "../../../shared/version-diff";
 import { Show } from "solid-js";
 import { api } from "../../api";
 import { date } from "../../domain";
 import { Button } from "../../components/ui";
 export function DocumentVersions() {
-  const { doc, tab, busy, setVersionId, setDiff, run, version, action } =
-    useApp();
+  const {
+    doc,
+    tab,
+    busy,
+    setVersionId,
+    setDiff,
+    run,
+    version,
+    action,
+    person,
+  } = useApp();
+  const [baseId, setBaseId] = createSignal("");
+  createEffect(
+    on(
+      () => version()?.id,
+      () =>
+        setBaseId(
+          version()?.parent_id ??
+            doc()?.versions.find((v) => v.number < (version()?.number ?? 0))
+              ?.id ??
+            "",
+        ),
+    ),
+  );
   return (
     <Show when={tab() === "versions"}>
       <section class="card-section">
@@ -48,6 +71,31 @@ export function DocumentVersions() {
             Загрузить новую версию
           </Button>
         </form>
+        <h3>История версий</h3>
+        <ol class="version-history" aria-label="История версий">
+          <For each={doc()?.versions}>
+            {(v) => (
+              <li>
+                <button
+                  type="button"
+                  class={`version-history-entry ${version()?.id === v.id ? "selected" : ""}`}
+                  aria-current={version()?.id === v.id ? "true" : undefined}
+                  onClick={() => setVersionId(v.id)}
+                >
+                  <b>
+                    v{v.number}
+                    {doc()?.versions[0]?.id === v.id ? " · Актуальная" : ""}
+                  </b>
+                  <span>{v.message}</span>
+                  <small>
+                    {person(v.author_id)} · {date(v.created)} ·{" "}
+                    {v.sha256.slice(0, 12)}
+                  </small>
+                </button>
+              </li>
+            )}
+          </For>
+        </ol>
         <label class="field">
           <span>Версия</span>
           <select
@@ -77,17 +125,53 @@ export function DocumentVersions() {
                 >
                   Скачать оригинал
                 </a>
-                <Button
-                  onClick={() =>
-                    void run(async () => {
-                      const diff = await api<unknown>(
-                        `/api/versions/${v().id}/diff`,
-                      );
-                      setDiff((diff as { diff: string }).diff);
-                    })
-                  }
+                <Show
+                  when={doc()?.versions.some(
+                    (other) => other.number < v().number,
+                  )}
                 >
-                  Сравнить с предыдущей
+                  <label class="field">
+                    <span>Сравнить с</span>
+                    <select
+                      aria-label="Базовая версия"
+                      value={baseId()}
+                      onChange={(e) => setBaseId(e.currentTarget.value)}
+                    >
+                      <For
+                        each={doc()?.versions.filter(
+                          (other) => other.number < v().number,
+                        )}
+                      >
+                        {(other) => (
+                          <option value={other.id}>
+                            v{other.number} · {other.filename}
+                          </option>
+                        )}
+                      </For>
+                    </select>
+                  </label>
+                </Show>
+                <Button
+                  disabled={busy()}
+                  onClick={() => {
+                    const documentId = doc()!.id,
+                      versionId = v().id,
+                      base = baseId();
+                    void run(async () => {
+                      const result = await api<VersionDiff>(
+                        `/api/versions/${versionId}/diff${base ? `?base=${encodeURIComponent(base)}` : ""}`,
+                      );
+                      if (
+                        doc()?.id === documentId &&
+                        version()?.id === versionId &&
+                        tab() === "versions" &&
+                        baseId() === base
+                      )
+                        setDiff(result);
+                    });
+                  }}
+                >
+                  Показать до / после
                 </Button>
               </div>
               <p>{v().message}</p>

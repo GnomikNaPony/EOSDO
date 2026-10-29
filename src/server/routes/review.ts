@@ -24,6 +24,20 @@ export function reviewRoutes(app: FastifyInstance, context: Context) {
         (typeof version.text !== "string" || !version.text.includes(anchor))
       )
         throw new Problem(409, "Цитата не найдена в выбранной версии");
+      const anchorLine = b.anchor_line ?? null;
+      if (
+        anchorLine !== null &&
+        (typeof anchorLine !== "number" ||
+          !Number.isInteger(anchorLine) ||
+          anchorLine < 1 ||
+          !anchor ||
+          typeof version.text !== "string" ||
+          version.text
+            .replaceAll("\r\n", "\n")
+            .split("\n")
+            [anchorLine - 1]?.trim() !== anchor)
+      )
+        throw new Problem(409, "Строка цитаты не найдена в выбранной версии");
       const id = uid();
       await s.put(
         "comment",
@@ -34,10 +48,24 @@ export function reviewRoutes(app: FastifyInstance, context: Context) {
           author_id: user.id,
           text,
           anchor,
+          anchor_line: anchorLine,
           severity: b.severity ?? "normal",
           status: "open",
           created: now(),
           resolved_version: null,
+        },
+        String(doc.id),
+      );
+      await s.put(
+        "comment_event",
+        {
+          id: uid(),
+          comment_id: id,
+          author_id: user.id,
+          from_status: null,
+          status: "open",
+          version_id: version.id!,
+          created: now(),
         },
         String(doc.id),
       );
@@ -97,11 +125,34 @@ export function reviewRoutes(app: FastifyInstance, context: Context) {
           if (!["open", "addressed", "closed"].includes(String(b.status)))
             throw new Problem(400, "Неизвестный статус замечания");
           if (b.status === "closed") curator(user);
+          if (b.expected_status !== undefined && b.expected_status !== c.status)
+            throw new Problem(
+              409,
+              "Статус замечания изменился. Обновите карточку.",
+            );
           const latest = (await s.list("version", String(doc.id))).sort(
             (a, b) => Number(b.number) - Number(a.number),
           )[0];
           if (!latest || b.version_id !== latest.id)
             throw new Problem(409, "Документ изменился. Обновите версию.");
+          if (
+            c.status === b.status &&
+            (b.status === "open" || c.resolved_version === latest.id)
+          )
+            return { ok: true };
+          await s.put(
+            "comment_event",
+            {
+              id: uid(),
+              comment_id: c.id!,
+              author_id: user.id,
+              from_status: c.status!,
+              status: b.status!,
+              version_id: latest.id!,
+              created: now(),
+            },
+            String(doc.id),
+          );
           await s.put(
             "comment",
             {

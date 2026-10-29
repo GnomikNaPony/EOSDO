@@ -1,3 +1,4 @@
+import { lineDiff, type VersionDiff } from "../../shared/version-diff";
 import { directory } from "../workspace";
 import type { FastifyInstance } from "fastify";
 import type { Context } from "../workspace";
@@ -365,33 +366,99 @@ export function documentRoutes(app: FastifyInstance, context: Context) {
       });
     },
   );
-  app.get<{ Params: { id: string } }>(
+  app.get<{ Params: { id: string }; Querystring: { base?: string } }>(
     "/api/versions/:id/diff",
     async (request, reply) => {
       const { user } = await session(request, reply);
       const version = await store.get(request.params.id, "version");
       if (!version) throw new Problem(404, "Версия не найдена");
       await document(store, String(version.document_id), user);
-      const parent = version.parent_id
-        ? await store.get(String(version.parent_id), "version")
-        : null;
-      if (!parent) return { diff: "Первая версия. Предыдущей редакции нет." };
-      if (typeof parent.text !== "string" || typeof version.text !== "string")
-        return {
-          diff: "Сравнение доступно после извлечения текста обеих версий. Оригиналы можно скачать.",
-        };
-      if (parent.text === version.text)
-        return {
-          diff: "Извлечённый текст одинаков. Файлы могут отличаться оформлением.",
-        };
-      return {
-        diff: [
-          `--- v${parent.number}`,
-          `+++ v${version.number}`,
-          ...parent.text.split("\n").map((line) => `-${line}`),
-          ...version.text.split("\n").map((line) => `+${line}`),
-        ].join("\n"),
+      const previous =
+        !version.parent_id &&
+        request.query.base === undefined &&
+        Number(version.number) > 1
+          ? (await store.list("version", String(version.document_id)))
+              .filter((v) => Number(v.number) < Number(version.number))
+              .sort((a, b) => Number(b.number) - Number(a.number))[0]
+          : undefined;
+      const base = request.query.base ?? version.parent_id ?? previous?.id;
+      if (
+        base !== undefined &&
+        base !== null &&
+        (typeof base !== "string" || !base)
+      )
+        throw new Problem(400, "Выберите предыдущую версию");
+      const parent = base
+        ? await store.get(String(base), "version")
+        : undefined;
+      if (
+        base &&
+        (!parent ||
+          parent.document_id !== version.document_id ||
+          Number(parent.number) >= Number(version.number))
+      )
+        throw new Problem(
+          400,
+          "Сравнение доступно с предыдущими версиями этого документа",
+        );
+      const publicVersion = (v: typeof version) => ({
+        id: String(v.id),
+        number: Number(v.number),
+        filename: String(v.filename),
+      });
+      const result: VersionDiff = {
+        document_id: String(version.document_id),
+        before: parent ? publicVersion(parent) : null,
+        after: publicVersion(version),
+        state: "ready",
+        message: "",
+        lines: [],
+        added: 0,
+        removed: 0,
+        diff: "",
       };
+      if (
+        typeof version.text !== "string" ||
+        (parent && typeof parent.text !== "string")
+      ) {
+        result.state = "unavailable";
+        result.message =
+          "Сравнение недоступно: текст одной из версий не извлечён. Скачайте оригиналы.";
+      } else {
+        const compared = lineDiff(
+          parent ? String(parent.text) : "",
+          version.text,
+        );
+        result.lines = compared.lines;
+        result.added = compared.lines.filter((l) => l.kind === "add").length;
+        result.removed = compared.lines.filter(
+          (l) => l.kind === "remove",
+        ).length;
+        if (compared.limited) {
+          result.state = "limited";
+          result.message =
+            "Тексты слишком велики для построчного сравнения. Скачайте оригиналы.";
+        } else if (!result.added && !result.removed) {
+          result.state = "identical";
+          result.message =
+            "Извлечённый текст одинаков. Файлы могут отличаться оформлением или переводами строк.";
+        } else if (!parent)
+          result.message =
+            Number(version.number) === 1
+              ? "Первая версия: весь текст добавлен."
+              : "Предыдущая версия отсутствует: показан весь текст.";
+      }
+      result.diff = result.lines.length
+        ? [
+            `--- ${parent ? `v${parent.number}` : "пустой документ"}`,
+            `+++ v${version.number}`,
+            ...result.lines.map(
+              (l) =>
+                `${l.kind === "add" ? "+" : l.kind === "remove" ? "-" : " "}${l.text}`,
+            ),
+          ].join("\n")
+        : result.message;
+      return result;
     },
   );
 }

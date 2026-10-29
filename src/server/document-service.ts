@@ -30,6 +30,7 @@ export async function detail(store: Store, id: string, user: User) {
   );
   const comments = await store.list("comment", id);
   const replies = await store.list("reply", id);
+  const events = await store.list("comment_event", id);
   const links = await store.list("link", id);
   return {
     ...doc,
@@ -41,6 +42,7 @@ export async function detail(store: Store, id: string, user: User) {
     comments: comments.map((comment) => ({
       ...comment,
       replies: replies.filter((r) => r.comment_id === comment.id),
+      events: events.filter((event) => event.comment_id === comment.id),
     })),
     checks: (await store.list("check", id)).reverse(),
     history: (await store.list("history", id)).reverse(),

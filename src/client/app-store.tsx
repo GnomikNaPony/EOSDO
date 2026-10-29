@@ -8,6 +8,7 @@ import {
   onCleanup,
   type ParentProps,
 } from "solid-js";
+import type { VersionDiff } from "../shared/version-diff";
 import { api } from "./api";
 import type { Bootstrap, Document, Template, FileSearchResults } from "./types";
 import { labels } from "./domain";
@@ -31,7 +32,13 @@ function createAppStore() {
   const [toast, setToast] = createSignal("");
   const [modal, setModal] = createSignal<"create" | "template" | null>(null);
   const [versionId, setVersionId] = createSignal("");
-  const [diff, setDiff] = createSignal<string>();
+  const [diff, setDiff] = createSignal<VersionDiff>();
+  const [commentDraft, setCommentDraft] = createSignal<{
+    document_id: string;
+    version_id: string;
+    anchor: string;
+    anchor_line: number;
+  }>();
   const [selected, setSelected] = createSignal<string[]>([]);
   const [page, setPage] = createSignal(1);
   const [template, setTemplate] = createSignal<Template>();
@@ -158,11 +165,17 @@ function createAppStore() {
         !next.versions.some((v) => v.id === requestedVersion)
       )
         throw new Error("Указанная версия документа не найдена");
+      if (doc()?.id !== next.id) {
+        setDiff(undefined);
+        setCommentDraft(undefined);
+      }
       setDoc(next);
       setVersionId(requestedVersion);
       setTab(search.get("tab") || "general");
     } else {
       setDoc(undefined);
+      setDiff(undefined);
+      setCommentDraft(undefined);
       setSection(hash || "all");
     }
     setMobile(false);
@@ -303,6 +316,7 @@ function createAppStore() {
     setModal,
     versionId,
     setVersionId: (value: string) => {
+      setCommentDraft(undefined);
       setVersionId(value);
       if (doc())
         history.replaceState(
@@ -313,6 +327,25 @@ function createAppStore() {
     },
     diff,
     setDiff,
+    commentDraft,
+    setCommentDraft,
+    commentOnLine: (
+      documentId: string,
+      versionId: string,
+      anchor: string,
+      line: number,
+    ) => {
+      if (doc()?.id !== documentId) return;
+      setVersionId(versionId);
+      setCommentDraft({
+        document_id: documentId,
+        version_id: versionId,
+        anchor,
+        anchor_line: line,
+      });
+      setDiff(undefined);
+      changeTab("comments");
+    },
     selected,
     setSelected,
     page,

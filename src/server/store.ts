@@ -34,6 +34,9 @@ UPDATE eosdo_settings SET data=(data #>> '{}')::jsonb WHERE jsonb_typeof(data)='
 CREATE UNIQUE INDEX IF NOT EXISTS eosdo_account_email_normalized ON eosdo_records (lower(data->>'email')) WHERE kind='account';
 CREATE UNIQUE INDEX IF NOT EXISTS eosdo_version_number ON eosdo_records (document_id, (data->>'number')) WHERE kind='version';
 CREATE OR REPLACE FUNCTION eosdo_protect_version() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+IF OLD.kind='comment_event' THEN RAISE EXCEPTION 'Comment events are immutable'; END IF;
+IF OLD.kind='reply' THEN RAISE EXCEPTION 'Replies are immutable'; END IF;
+IF OLD.kind='comment' AND (TG_OP='DELETE' OR NEW.kind IS DISTINCT FROM OLD.kind OR NEW.document_id IS DISTINCT FROM OLD.document_id OR NEW.owner IS DISTINCT FROM OLD.owner OR (NEW.data - 'status' - 'resolved_version') IS DISTINCT FROM (OLD.data - 'status' - 'resolved_version')) THEN RAISE EXCEPTION 'Comment originals are immutable'; END IF;
 IF OLD.kind='version' AND (TG_OP='DELETE' OR NEW.kind IS DISTINCT FROM OLD.kind OR NEW.document_id IS DISTINCT FROM OLD.document_id OR NEW.owner IS DISTINCT FROM OLD.owner OR (NEW.data - 'text' - 'extraction_error') IS DISTINCT FROM (OLD.data - 'text' - 'extraction_error')) THEN RAISE EXCEPTION 'Version originals are immutable'; END IF;
 IF TG_OP='DELETE' THEN RETURN OLD; END IF;
 RETURN NEW; END $$;
