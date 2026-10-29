@@ -107,6 +107,10 @@ export function WorkspaceShell(props: ParentProps) {
               </details>
             )}
           </For>
+          <a class="nav-link standalone" href="#/knowledge">
+            <Icon name="search" />
+            Данные / поиск по смыслу
+          </a>
           <a class="nav-link standalone" href="#/search">
             <Icon name="search" />
             Поиск

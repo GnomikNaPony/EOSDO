@@ -21,6 +21,7 @@ describe("document validation", () => {
     ).toThrow();
   });
 });
+Bun.env.INTELLIGENCE_WORKER_ENABLED = "0";
 const integration = Bun.env.RUN_INTEGRATION === "1" ? test : test.skip;
 integration(
   "empty workspace and manual file lifecycle with PostgreSQL Redis MinIO",

@@ -103,3 +103,25 @@ export interface Bootstrap {
   }[];
   templates: Template[];
 }
+export interface FileSearchMatch {
+  version_id: string | null;
+  version_number: number | null;
+  filename: string | null;
+  is_latest: boolean;
+  source: "metadata" | "filename" | "text";
+  snippet: string;
+  text_state: "ready" | "pending" | "unavailable";
+}
+export interface FileSearchResults {
+  query: string;
+  items: {
+    document_id: string;
+    matches: FileSearchMatch[];
+    match_count: number;
+  }[];
+  total: number;
+  truncated: boolean;
+  limit: number;
+  pending_files: number;
+  unavailable_files: number;
+}

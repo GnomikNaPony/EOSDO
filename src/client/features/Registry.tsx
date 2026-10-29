@@ -1,5 +1,5 @@
 import { useApp } from "../app-store";
-import { For } from "solid-js";
+import { For, Show } from "solid-js";
 import { labels } from "../domain";
 import { date } from "../domain";
 import { Button } from "../components/ui";
@@ -29,6 +29,14 @@ export function Registry() {
     heading,
     rows,
     exportList,
+    searchScope,
+    setSearchScope,
+    searchHistory,
+    setSearchHistory,
+    searchResults,
+    searchLoading,
+    searchError,
+    searchNow,
   } = useApp();
   return (
     <>
@@ -60,6 +68,7 @@ export function Registry() {
         onSubmit={(e) => {
           e.preventDefault();
           setPage(1);
+          searchNow();
         }}
       >
         <div class="filter-toggles">
@@ -73,6 +82,8 @@ export function Registry() {
               setStatus("");
               setFrom("");
               setTo("");
+              setSearchScope("all");
+              setSearchHistory("all");
             }}
           >
             Сбросить фильтры
@@ -80,9 +91,11 @@ export function Registry() {
         </div>
         <div class="filter-grid">
           <label class="field">
-            <span>Содержание / рег. номер</span>
+            <span>Поиск по файлам и документам</span>
             <input
               type="search"
+              maxlength="200"
+              placeholder="Слова из файла, имя, номер…"
               value={query()}
               onInput={(e) => {
                 setQuery(e.currentTarget.value);
@@ -131,12 +144,86 @@ export function Registry() {
             />
           </label>
         </div>
+        <div class="flex flex-wrap gap-4 items-end px-5 py-3">
+          <label class="field">
+            <span>Где искать</span>
+            <select
+              value={searchScope()}
+              onChange={(e) => setSearchScope(e.currentTarget.value)}
+            >
+              <option value="all">Везде</option>
+              <option value="filename">Имена файлов</option>
+              <option value="text">Содержимое файлов</option>
+              <option value="metadata">Реквизиты карточки</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Версии</span>
+            <select
+              value={searchHistory()}
+              onChange={(e) => setSearchHistory(e.currentTarget.value)}
+            >
+              <option value="all">Все версии, включая историю</option>
+              <option value="latest">Только актуальные версии</option>
+            </select>
+          </label>
+          <p class="text-xs text-slate-500 max-w-xl">
+            Все введённые слова, без учёта регистра. Текстовый поиск — по
+            извлечённому тексту TXT/MD/CSV; PDF/DOCX/XLSX доступны по имени
+            файла и реквизитам.
+          </p>
+        </div>
         <div class="filter-submit">
           <Button type="submit" icon="search">
             Найти
           </Button>
         </div>
       </form>
+      <div aria-live="polite" class="px-5 py-3 text-sm">
+        <Show when={searchLoading()}>
+          <p role="status">Поиск на сервере…</p>
+        </Show>
+        <Show when={searchError()}>
+          <p role="alert" class="text-red-700">
+            {searchError()}{" "}
+            <button type="button" class="text-button" onClick={searchNow}>
+              Повторить поиск
+            </button>
+          </p>
+        </Show>
+        <Show
+          when={
+            query().trim() &&
+            !searchLoading() &&
+            !searchError() &&
+            searchResults()
+          }
+        >
+          <p>
+            Найдено документов: <strong>{searchResults()?.total}</strong>.
+            Совпадения привязаны к версии файла.
+          </p>
+          <Show when={searchResults()?.truncated}>
+            <p>
+              Показаны первые {searchResults()?.limit}. Уточните запрос или
+              фильтры.
+            </p>
+          </Show>
+          <Show
+            when={
+              searchResults()?.pending_files ||
+              searchResults()?.unavailable_files
+            }
+          >
+            <p class="text-amber-800">
+              Поиск по содержимому неполный: текст ещё не извлечён —{" "}
+              {searchResults()?.pending_files}, текст недоступен —{" "}
+              {searchResults()?.unavailable_files}. Такие файлы можно найти по
+              имени.
+            </p>
+          </Show>
+        </Show>
+      </div>
       <div class="list-tools">
         <div>
           <Button
@@ -181,7 +268,13 @@ export function Registry() {
               fallback={
                 <tr>
                   <td colspan="10" class="empty-table">
-                    Нет записей для отображения
+                    {searchLoading()
+                      ? "Выполняется поиск…"
+                      : searchError()
+                        ? "Поиск не выполнен. Повторите запрос."
+                        : query().trim()
+                          ? "Совпадений не найдено. Измените слова, область поиска или версии."
+                          : "Нет записей для отображения"}
                   </td>
                 </tr>
               }
@@ -238,6 +331,55 @@ export function Registry() {
                     >
                       ↗
                     </a>
+                    <For
+                      each={
+                        searchResults()?.items.find(
+                          (item) => item.document_id === d.id,
+                        )?.matches
+                      }
+                    >
+                      {(match) => (
+                        <div
+                          class="mt-3 border-l-2 border-sky-500 pl-3 text-sm whitespace-normal"
+                          data-search-match
+                        >
+                          <a
+                            href={`#/doc/${encodeURIComponent(d.id)}?tab=${match.version_id ? "versions" : "general"}${match.version_id ? `&version=${encodeURIComponent(match.version_id)}` : ""}`}
+                          >
+                            {match.version_id
+                              ? `v${match.version_number} · ${match.filename} · ${match.is_latest ? "актуальная" : "история"}`
+                              : "Реквизиты карточки"}
+                          </a>
+                          <p class="my-1 text-slate-600 leading-relaxed">
+                            {match.snippet}
+                          </p>
+                          <small>
+                            {match.source === "text"
+                              ? "Совпадение в содержимом"
+                              : match.source === "filename"
+                                ? "Совпадение в имени файла"
+                                : "Совпадение в реквизитах"}
+                            {match.text_state === "pending"
+                              ? " · текст ещё не извлечён"
+                              : match.text_state === "unavailable"
+                                ? " · текст недоступен"
+                                : ""}
+                          </small>
+                        </div>
+                      )}
+                    </For>
+                    <Show
+                      when={
+                        (searchResults()?.items.find(
+                          (item) => item.document_id === d.id,
+                        )?.match_count || 0) > 3
+                      }
+                    >
+                      <small>
+                        Показаны 3 версии с совпадениями. Остальные — в истории
+                        документа.
+                      </small>
+                    </Show>
                   </td>
                   <td>
                     {person(d.owner_id)}

@@ -1,5 +1,7 @@
 name: checks
 on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -22,3 +24,36 @@ jobs:
       - run: bun run lint
       - if: always()
         run: docker compose down
+  deploy:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.check.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    concurrency:
+      group: railway-production
+      cancel-in-progress: false
+    env:
+      CHECK_RESULT: ${{ needs.check.result }}
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
+      RAILWAY_SERVICE_ID: ${{ vars.RAILWAY_SERVICE_ID }}
+      RAILWAY_ENVIRONMENT_ID: ${{ vars.RAILWAY_ENVIRONMENT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Require configured deployment target
+        run: |
+          for key in RAILWAY_TOKEN RAILWAY_PROJECT_ID RAILWAY_SERVICE_ID RAILWAY_ENVIRONMENT_ID; do
+            if [ -z "${!key}" ]; then
+              echo "::error::Deployment blocked: configure $key in GitHub environment production"
+              exit 1
+            fi
+          done
+      - run: npm install --global @railway/cli@5.71.0
+      - name: Deploy the checked commit
+        run: bun run release

@@ -2,6 +2,7 @@ import type { Services } from "./store";
 import { Store } from "./store";
 import type { RecordData, Value } from "./schema";
 import { now, uid, Problem } from "./domain";
+import { extractText } from "./extraction";
 
 export const model = Bun.env.OLLAMA_MODEL ?? "qwen3.5:9b";
 const ollama = Bun.env.OLLAMA_URL ?? "http://127.0.0.1:11434";
@@ -201,18 +202,15 @@ export function startWorker(services: Services) {
       let result: RecordData | null = null;
       let error: string | null = null;
       try {
-        if (!/\.(txt|md|csv)$/i.test(String(version.filename)))
+        const bytes = new Uint8Array(
+          await services.s3.file(String(version.object_key)).arrayBuffer(),
+        );
+        const extracted = await extractText(String(version.filename), bytes);
+        if (extracted.text === null)
           throw new CheckError(
-            "Извлечение PDF/DOCX/XLSX пока не перенесено на TypeScript. Оригинал доступен для скачивания и ручной проверки.",
+            extracted.extraction_error ?? "Извлечение текста недоступно",
           );
-        const bytes = await services.s3
-          .file(String(version.object_key))
-          .arrayBuffer();
-        const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-        if (text.length > 45000)
-          throw new CheckError(
-            "Документ превышает лимит извлечённого текста; проверьте вручную.",
-          );
+        const text = extracted.text;
         await store.put(
           "version",
           { ...version, text, extraction_error: null },

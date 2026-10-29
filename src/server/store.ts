@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/bun-sql";
 import { and, eq, sql as query } from "drizzle-orm";
 import { records, settings, type RecordData } from "./schema";
 import { defaultRules, now, uid } from "./domain";
+import { s3Options } from "./s3-config";
 
 export async function connect() {
   const sql = new SQL(
@@ -11,13 +12,7 @@ export async function connect() {
   await sql`SELECT 1`;
   const redis = new RedisClient(Bun.env.REDIS_URL ?? "redis://127.0.0.1:6379");
   await redis.connect();
-  const s3 = new S3Client({
-    endpoint: Bun.env.S3_ENDPOINT ?? "http://127.0.0.1:9000",
-    bucket: Bun.env.S3_BUCKET ?? "eosdo",
-    accessKeyId: Bun.env.S3_ACCESS_KEY_ID ?? "eosdo",
-    secretAccessKey: Bun.env.S3_SECRET_ACCESS_KEY ?? "eosdo-development-secret",
-    region: Bun.env.S3_REGION ?? "us-east-1",
-  });
+  const s3 = new S3Client(s3Options(Bun.env));
   const db = drizzle(sql);
   return { sql, db, redis, s3 };
 }

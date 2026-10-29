@@ -9,7 +9,7 @@ import {
   type ParentProps,
 } from "solid-js";
 import { api } from "./api";
-import type { Bootstrap, Document, Template } from "./types";
+import type { Bootstrap, Document, Template, FileSearchResults } from "./types";
 import { labels } from "./domain";
 function createAppStore() {
   const [data, setData] = createSignal<Bootstrap>();
@@ -32,6 +32,13 @@ function createAppStore() {
   const [selected, setSelected] = createSignal<string[]>([]);
   const [page, setPage] = createSignal(1);
   const [template, setTemplate] = createSignal<Template>();
+  const [searchScope, setSearchScope] = createSignal("all");
+  const [searchHistory, setSearchHistory] = createSignal("all");
+  const [searchResults, setSearchResults] = createSignal<FileSearchResults>();
+  const [searchLoading, setSearchLoading] = createSignal(false);
+  const [searchError, setSearchError] = createSignal("");
+  const [searchNonce, setSearchNonce] = createSignal(0);
+  let searchRequest = 0;
   let toastTimer: ReturnType<typeof setTimeout>;
   const notify = (text: string) => {
     setToast(text);
@@ -72,7 +79,65 @@ function createAppStore() {
     from();
     to();
     section();
+    searchScope();
+    searchHistory();
     setPage(1);
+  });
+  createEffect(() => {
+    const bootstrap = data();
+    const folder = section();
+    const text = query().trim();
+    const params = new URLSearchParams({
+      q: text,
+      type: type(),
+      status: status(),
+      from: from(),
+      to: to(),
+      scope: searchScope(),
+      history: searchHistory(),
+      folder,
+    });
+    searchNonce();
+    const active =
+      !doc() &&
+      [
+        "all",
+        "mine",
+        "active",
+        "review",
+        "revision",
+        "done",
+        "favorites",
+        "search",
+      ].includes(folder);
+    const request = ++searchRequest;
+    setSearchResults(undefined);
+    setSearchError("");
+    setSearchLoading(false);
+    if (!text || !active || !bootstrap?.user || bootstrap.auth_required) return;
+    setSearchLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const response = await api<FileSearchResults>(`/api/search?${params}`);
+        if (request !== searchRequest) return;
+        setSearchResults(response);
+      } catch (error) {
+        if (request === searchRequest)
+          setSearchError(
+            error instanceof TypeError
+              ? "Нет соединения с сервером. Повторите поиск."
+              : error instanceof Error
+                ? error.message
+                : "Поиск недоступен",
+          );
+      } finally {
+        if (request === searchRequest) setSearchLoading(false);
+      }
+    }, 250);
+    onCleanup(() => {
+      clearTimeout(timer);
+      searchRequest++;
+    });
   });
   async function route() {
     const request = ++navigation;
@@ -83,8 +148,16 @@ function createAppStore() {
         "/api/documents/" + encodeURIComponent(decodeURIComponent(id || "")),
       );
       if (request !== navigation || location.hash.slice(2) !== hash) return;
+      const search = new URLSearchParams(params);
+      const requestedVersion = search.get("version") || "";
+      if (
+        requestedVersion &&
+        !next.versions.some((v) => v.id === requestedVersion)
+      )
+        throw new Error("Указанная версия документа не найдена");
       setDoc(next);
-      setTab(new URLSearchParams(params).get("tab") || "general");
+      setVersionId(requestedVersion);
+      setTab(search.get("tab") || "general");
     } else {
       setDoc(undefined);
       setSection(hash || "all");
@@ -119,11 +192,8 @@ function createAppStore() {
     () =>
       data()?.documents.filter(
         (d) =>
-          (!query() ||
-            [d.title, d.number, person(d.owner_id), d.summary]
-              .join(" ")
-              .toLowerCase()
-              .includes(query().toLowerCase())) &&
+          (!query().trim() ||
+            searchResults()?.items.some((item) => item.document_id === d.id)) &&
           (!type() || d.type === type()) &&
           (!status() || d.status === status()) &&
           (!from() || d.due >= from()) &&
@@ -173,7 +243,7 @@ function createAppStore() {
     history.replaceState(
       null,
       "",
-      `#/doc/${encodeURIComponent(doc()!.id)}?tab=${value}`,
+      `#/doc/${encodeURIComponent(doc()!.id)}?tab=${value}${versionId() ? `&version=${encodeURIComponent(versionId())}` : ""}`,
     );
   };
 
@@ -209,7 +279,15 @@ function createAppStore() {
     modal,
     setModal,
     versionId,
-    setVersionId,
+    setVersionId: (value: string) => {
+      setVersionId(value);
+      if (doc())
+        history.replaceState(
+          null,
+          "",
+          `#/doc/${encodeURIComponent(doc()!.id)}?tab=${tab()}&version=${encodeURIComponent(value)}`,
+        );
+    },
     diff,
     setDiff,
     selected,
@@ -218,6 +296,14 @@ function createAppStore() {
     setPage,
     template,
     setTemplate,
+    searchScope,
+    setSearchScope,
+    searchHistory,
+    setSearchHistory,
+    searchResults,
+    searchLoading,
+    searchError,
+    searchNow: () => setSearchNonce((value) => value + 1),
     notify,
     person,
     refresh,

@@ -2,6 +2,8 @@ import { chromium } from "playwright";
 import { SQL } from "bun";
 import { mkdir } from "node:fs/promises";
 
+Bun.env.INTELLIGENCE_WORKER_ENABLED = "0";
+
 // Own a temporary database; browser fixtures never enter the working registry.
 const databaseUrl = Bun.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is required");

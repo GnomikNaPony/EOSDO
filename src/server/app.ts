@@ -9,6 +9,9 @@ import { templateRoutes } from "./routes/templates";
 import { documentRoutes } from "./routes/documents";
 import { reviewRoutes } from "./routes/review";
 import { staticRoutes } from "./routes/static";
+import { searchRoutes } from "./routes/search";
+import { intelligenceRoutes } from "./routes/intelligence";
+import { startIntelligenceWorker } from "./intelligence";
 export async function createApp(existing?: Services) {
   const services = existing ?? (await connect());
   const store = new Store(services.db);
@@ -64,10 +67,14 @@ export async function createApp(existing?: Services) {
   templateRoutes(app, context);
   documentRoutes(app, context);
   reviewRoutes(app, context);
+  searchRoutes(app, context);
+  intelligenceRoutes(app, context);
   staticRoutes(app);
   const stopWorker = startWorker(services);
+  const stopIntelligence = startIntelligenceWorker(services);
   app.addHook("onClose", async () => {
     stopWorker();
+    await stopIntelligence();
     if (!existing) {
       services.redis.close();
       await services.sql.close();

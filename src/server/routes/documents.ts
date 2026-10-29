@@ -13,6 +13,7 @@ import {
   uid,
 } from "../domain";
 import { queue } from "../ai";
+import { searchableText } from "../search";
 import { curator, body, document, detail } from "../document-service";
 async function checkingStatus(store: Store) {
   const rules = await store.rules();
@@ -161,6 +162,7 @@ export function documentRoutes(app: FastifyInstance, context: Context) {
       if (!bytes.length || bytes.length > 20 * 1024 * 1024)
         throw new Problem(413, "Файл должен быть непустым и не больше 20 МБ");
       const sha256 = new Bun.CryptoHasher("sha256").update(bytes).digest("hex");
+      const indexed = await searchableText(filename, bytes);
       const id = uid();
       const key = `versions/${request.params.id}/${id}`;
       await services.s3.write(key, bytes, { type: "application/octet-stream" });
@@ -193,8 +195,7 @@ export function documentRoutes(app: FastifyInstance, context: Context) {
               author_id: user.id,
               message,
               created: now(),
-              text: null,
-              extraction_error: null,
+              ...indexed,
             },
             request.params.id,
           );

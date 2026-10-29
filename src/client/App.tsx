@@ -11,6 +11,7 @@ import { Auth } from "./features/Auth";
 import { Rules } from "./features/Rules";
 import { Notifications } from "./features/Notifications";
 import { Kanban } from "./features/Kanban";
+import { Knowledge } from "./features/Knowledge";
 function Workspace() {
   const { data, doc, section, error, run, refresh } = useApp();
   return (
@@ -35,6 +36,9 @@ function Workspace() {
           <Switch>
             <Match when={doc()}>
               <Detail />
+            </Match>
+            <Match when={section() === "knowledge"}>
+              <Knowledge />
             </Match>
             <Match when={section() === "templates"}>
               <Templates />
