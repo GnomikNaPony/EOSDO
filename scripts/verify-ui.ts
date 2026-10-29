@@ -404,6 +404,71 @@ try {
     .getByRole("link", { name: "Скачать оригинал", exact: true })
     .first()
     .waitFor();
+  await page
+    .getByRole("button", { name: "Показать до / после", exact: true })
+    .click();
+  const demoDiff = page.getByRole("dialog", {
+    name: "Сравнение версий",
+    exact: true,
+  });
+  await demoDiff.waitFor();
+  await demoDiff.locator(".diff-added").first().waitFor();
+  await page.screenshot({
+    path: "test-results/demo-versions-diff-mobile.png",
+    fullPage: true,
+  });
+  await page.keyboard.press("Escape");
+  await demoDiff.waitFor({ state: "detached" });
+  await page.getByRole("tab", { name: "Замечания", exact: true }).click();
+  await page.locator("article.comment").first().waitFor();
+  await page.locator("article.comment details summary").first().click();
+  await page.screenshot({
+    path: "test-results/demo-version-remark-mobile.png",
+    fullPage: true,
+  });
+  // Show v1 -> v3 and a complete historical resolution without uploading anything.
+  const archive = demoFirst.documents.find(
+    (d) => d.title === "Запуск электронного архива обращений",
+  )!;
+  await page.evaluate((id) => {
+    location.hash = "/doc/" + id + "?tab=versions";
+  }, archive.id);
+  await page.getByRole("button", { name: /v3 · Актуальная/ }).waitFor();
+  const archiveDetail = await (
+    await page.request.get(address + "/api/documents/" + archive.id)
+  ).json();
+  await page
+    .getByRole("combobox", { name: "Базовая версия", exact: true })
+    .selectOption(
+      archiveDetail.versions.find((v: { number: number }) => v.number === 1).id,
+    );
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page
+    .getByRole("button", { name: "Показать до / после", exact: true })
+    .click();
+  await demoDiff.waitFor();
+  await demoDiff
+    .getByText("+ Срок пилота: 2–13 ноября 2026 года.", { exact: true })
+    .waitFor();
+  await page.screenshot({
+    path: "test-results/demo-versions-diff-desktop.png",
+    fullPage: true,
+  });
+  await page.keyboard.press("Escape");
+  await demoDiff.waitFor({ state: "detached" });
+  await page.getByRole("tab", { name: "Замечания", exact: true }).click();
+  await page
+    .getByText("Устранение подтверждено в v2", { exact: true })
+    .waitFor();
+  await page.getByText("История замечания", { exact: true }).click();
+  await page
+    .getByText(/Исправлено · ожидает проверки → Устранение подтверждено/)
+    .waitFor();
+  await page.screenshot({
+    path: "test-results/demo-version-remark-desktop.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   await page
     .getByRole("heading", { name: "Все документы", exact: true })

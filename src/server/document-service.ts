@@ -42,10 +42,14 @@ export async function detail(store: Store, id: string, user: User) {
     comments: comments.map((comment) => ({
       ...comment,
       replies: replies.filter((r) => r.comment_id === comment.id),
-      events: events.filter((event) => event.comment_id === comment.id),
+      events: events
+        .filter((event) => event.comment_id === comment.id)
+        .sort((a, b) => String(a.created).localeCompare(String(b.created))),
     })),
     checks: (await store.list("check", id)).reverse(),
-    history: (await store.list("history", id)).reverse(),
+    history: (await store.list("history", id)).sort((a, b) =>
+      String(b.created).localeCompare(String(a.created)),
+    ),
     links: (
       await Promise.all(
         links.map((link) => store.get(String(link.target_id), "document")),

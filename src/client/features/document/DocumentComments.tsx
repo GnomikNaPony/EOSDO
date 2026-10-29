@@ -167,7 +167,7 @@ export function DocumentComments() {
                 </div>
                 <small>{date(c.created)}</small>
                 <Show when={c.anchor_line}>
-                  <small>Строка {c.anchor_line}</small>
+                  <small> · Строка {c.anchor_line}</small>
                 </Show>
                 <Show when={c.anchor}>
                   <blockquote class="border-l-2 border-blue-200 pl-3 my-2 whitespace-pre-wrap">
