@@ -1,9 +1,9 @@
 import { authRoutes } from "./routes/auth";
 import Fastify from "fastify";
-import { connect, Store, type Services } from "./store";
+import { connect, Store, demoScope, type Services } from "./store";
 import { Problem } from "./domain";
 import { startWorker } from "./ai";
-import { sessionFor } from "./workspace";
+import { sessionFor, currentUser } from "./workspace";
 import { workspaceRoutes } from "./routes/workspace";
 import { templateRoutes } from "./routes/templates";
 import { documentRoutes } from "./routes/documents";
@@ -59,6 +59,21 @@ export async function createApp(existing?: Services) {
       throw new Problem(403, "Недопустимый Origin");
     reply.header("cache-control", "no-store");
     reply.header("x-content-type-options", "nosniff");
+  });
+
+  app.addHook("onRoute", (options) => {
+    if (
+      !options.url.startsWith("/api/") ||
+      options.url.startsWith("/api/auth/")
+    )
+      return;
+    const handler = options.handler;
+    options.handler = async function (request, reply) {
+      const user = await currentUser(services, store, request);
+      return demoScope.run(user?.demo_id ?? "", () =>
+        handler.call(this, request, reply),
+      );
+    };
   });
 
   const context = { services, store, session: sessionFor(services, store) };

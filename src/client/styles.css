@@ -2,15 +2,15 @@
 
 /* Source UI geometry, expressed through Tailwind components and theme tokens. */
 @theme {
-  --color-eosdo-950: #12316b;
-  --color-eosdo-900: #163c7c;
-  --color-eosdo-800: #1b4588;
-  --color-eosdo-line: #d8dfe6;
-  --font-sans: Arial, Helvetica, sans-serif;
+  --color-eosdo-950: #122b46;
+  --color-eosdo-900: #193b5d;
+  --color-eosdo-800: #244e72;
+  --color-eosdo-line: #dce4ec;
+  --font-sans: "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
 }
 @layer base {
   :root {
-    @apply font-sans text-[12px] text-slate-800 bg-white;
+    @apply font-sans text-[13px] text-slate-800 bg-slate-50;
     font-synthesis: none;
   }
   body {
@@ -40,11 +40,11 @@
   input,
   select,
   textarea {
-    @apply min-w-0 text-slate-800 border border-slate-300 rounded-xs bg-white outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200;
+    @apply min-w-0 text-slate-800 border border-slate-300 rounded-md bg-white outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200;
   }
   input:not([type="checkbox"]):not([type="radio"]),
   select {
-    @apply h-[27px] px-[7px] py-1;
+    @apply h-[34px] px-[7px] py-1;
   }
   input[type="checkbox"],
   input[type="radio"] {
@@ -80,9 +80,9 @@
     @apply size-4 shrink-0 align-middle;
   }
   .application {
-    @apply h-dvh min-h-[480px] grid overflow-hidden;
+    @apply h-dvh min-h-0 grid overflow-hidden;
     grid-template-columns: 246px minmax(0, 1fr);
-    grid-template-rows: 46px minmax(0, 1fr) 25px;
+    grid-template-rows: 54px minmax(0, 1fr) 28px;
   }
   .topbar {
     @apply col-span-full flex items-center gap-[15px] text-blue-50 px-4 pl-[9px] border-b border-eosdo-950 bg-linear-to-r from-eosdo-800 to-eosdo-950;
@@ -159,10 +159,13 @@
     @apply text-blue-800;
   }
   .nav-link.standalone {
-    @apply ml-3 min-h-[29px];
+    @apply ml-3 min-h-[34px];
   }
   .sidebar-bottom {
-    @apply mt-auto p-[15px] text-[10px] text-blue-200 flex gap-2 items-center;
+    @apply mt-auto p-[15px] text-[10px] text-blue-200 flex flex-col gap-2 items-stretch;
+  }
+  .demo-session-label {
+    @apply flex items-center gap-2 m-0 leading-relaxed;
   }
   .connection-dot {
     @apply size-[5px] rounded-full bg-emerald-300;
@@ -171,7 +174,7 @@
     @apply hidden;
   }
   .workspace {
-    @apply min-w-0 overflow-auto bg-white;
+    @apply min-w-0 overflow-auto bg-slate-50/60;
   }
   .workspace-toolbar {
     @apply flex items-center justify-between gap-2 px-[18px] pt-[13px] pb-[10px];
@@ -180,7 +183,7 @@
     @apply flex items-center gap-2 ml-auto;
   }
   .button {
-    @apply inline-flex items-center justify-center gap-[6px] min-h-[29px] px-[10px] py-[5px] border border-slate-300 rounded-xs bg-linear-to-b from-white to-slate-50 text-blue-900 text-[11px] leading-tight whitespace-nowrap no-underline hover:from-blue-50 hover:to-blue-50 hover:no-underline;
+    @apply inline-flex items-center justify-center gap-[6px] min-h-[34px] px-[10px] py-[5px] border border-slate-300 rounded-md bg-linear-to-b from-white to-slate-50 text-blue-900 text-[11px] leading-tight whitespace-nowrap no-underline hover:from-blue-50 hover:to-blue-50 hover:no-underline;
   }
   .button .icon {
     @apply size-[13px];
@@ -189,19 +192,19 @@
     @apply border-eosdo-900 text-white bg-eosdo-800 bg-none hover:bg-eosdo-900;
   }
   .icon-button {
-    @apply inline-flex items-center justify-center size-[27px] rounded-xs bg-transparent border-0 hover:bg-slate-100;
+    @apply inline-flex items-center justify-center size-[27px] rounded-md bg-transparent border-0 hover:bg-slate-100;
   }
   .title-row {
     @apply flex items-center justify-between gap-3 mx-[18px] py-[10px] border-b border-eosdo-line;
   }
   .title-row h1 {
-    @apply m-0 text-lg font-normal;
+    @apply m-0 text-xl font-semibold tracking-tight;
   }
   .view-name {
     @apply text-[10px] text-slate-500;
   }
   .filters {
-    @apply mx-[18px] mt-[10px] mb-3 bg-slate-50 border border-eosdo-line px-3 py-[10px];
+    @apply mx-[18px] mt-[10px] mb-3 bg-white border border-eosdo-line rounded-lg px-3 py-[10px];
   }
   .filter-toggles {
     @apply flex justify-between items-center gap-3 text-[11px] text-slate-500 mb-3;
@@ -239,7 +242,7 @@
     @apply text-[10px];
   }
   .table-scroll {
-    @apply overflow-auto mx-[18px];
+    @apply overflow-auto mx-[18px] rounded-lg border border-eosdo-line bg-white;
   }
   .document-table {
     @apply w-full border-collapse text-[11px] min-w-[1000px];
@@ -338,13 +341,13 @@
     grid-template-columns: minmax(0, 1fr);
   }
   .sidebar {
-    @apply fixed top-[46px] bottom-[25px] left-0 w-[246px] z-40 -translate-x-full transition-transform;
+    @apply fixed top-[54px] bottom-[28px] left-0 w-[246px] z-40 -translate-x-full transition-transform;
   }
   .mobile-open .sidebar {
     @apply translate-x-0 visible;
   }
   .mobile-open .nav-scrim {
-    @apply block fixed inset-0 top-[46px] bottom-[25px] bg-slate-950/40 z-30;
+    @apply block fixed inset-0 top-[54px] bottom-[28px] bg-slate-950/40 z-30;
   }
   .workspace {
     @apply col-start-1;
@@ -389,5 +392,162 @@
   *::after {
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@layer components {
+  .topbar-user {
+    @apply flex items-center gap-2 min-w-0 max-w-48;
+  }
+  .topbar-user > span:last-child {
+    @apply truncate;
+  }
+  .document-status {
+    @apply inline-flex rounded-full bg-slate-100 px-2 py-1 text-slate-700 text-[10px] font-semibold;
+  }
+  .status-approved,
+  .status-done {
+    @apply bg-emerald-50 text-emerald-800;
+  }
+  .status-revision {
+    @apply bg-amber-50 text-amber-900;
+  }
+  .overdue {
+    @apply text-red-700 font-semibold;
+  }
+  .kanban-board {
+    @apply flex gap-4 overflow-x-auto p-4;
+    scroll-snap-type: x proximity;
+  }
+  .kanban-column {
+    @apply min-w-64 w-64 shrink-0 rounded-xl bg-slate-100 border border-eosdo-line p-3;
+    scroll-snap-align: start;
+  }
+  .kanban-card {
+    @apply block rounded-lg bg-white border border-eosdo-line p-3 mb-3 shadow-sm hover:border-blue-300 hover:no-underline;
+  }
+}
+@media (max-width: 800px) {
+  :root {
+    font-size: 14px;
+  }
+  .topbar .icon-button,
+  .topbar-right > a {
+    @apply inline-flex items-center justify-center size-[44px] shrink-0;
+  }
+  .topbar-user,
+  .top-divider {
+    @apply hidden;
+  }
+  .topbar-right {
+    @apply gap-0;
+  }
+  .topbar-right .button {
+    @apply min-h-[44px] px-2;
+  }
+  .button {
+    @apply min-h-[44px] text-xs px-3;
+  }
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  input:not([type="checkbox"]):not([type="radio"]),
+  select {
+    @apply h-[44px];
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    @apply size-5;
+  }
+  .field {
+    @apply text-xs;
+  }
+  .sidebar {
+    @apply w-[min(300px,85vw)];
+  }
+  .nav-link,
+  .nav-link.standalone,
+  .nav-group summary {
+    @apply min-h-[44px] text-xs;
+  }
+  .workspace-toolbar,
+  .toolbar-right,
+  .list-tools,
+  .table-footer,
+  .filter-toggles {
+    @apply flex-wrap;
+  }
+  .toolbar-right {
+    @apply ml-0;
+  }
+  .title-row {
+    @apply items-start;
+    overflow-wrap: anywhere;
+  }
+  .document-tabs {
+    @apply sticky top-0 z-10 bg-white;
+  }
+  .document-tabs > button {
+    @apply min-h-12 text-xs;
+  }
+  .document-table {
+    @apply min-w-0 block;
+  }
+  .document-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .document-table tbody {
+    @apply block;
+  }
+  .document-table tbody tr {
+    @apply grid grid-cols-2 gap-x-3 p-4 border-b border-eosdo-line;
+  }
+  .document-table td {
+    @apply border-0 p-0 py-2 min-w-0;
+    overflow-wrap: anywhere;
+  }
+  .document-table td[data-label]::before {
+    content: attr(data-label);
+    @apply block mb-1 text-[11px] text-slate-500 font-normal;
+  }
+  .document-table td.document-summary {
+    @apply col-span-2 row-start-2 text-sm font-semibold;
+  }
+  .document-table td:first-child {
+    @apply col-start-1;
+  }
+  .document-table td:nth-child(2) {
+    @apply col-start-2 text-right;
+  }
+  .document-table td.empty-table {
+    @apply col-span-2;
+  }
+  .document-table tr.selected {
+    @apply bg-blue-50;
+  }
+  .document-table tr:hover td,
+  .document-table tr.selected td {
+    background: transparent;
+  }
+  .simple-table {
+    @apply block overflow-x-auto;
+  }
+  .simple-table th,
+  .simple-table td {
+    @apply min-w-28;
+  }
+  [role="dialog"] {
+    @apply rounded-xl;
+    overflow-wrap: anywhere;
+  }
+  .kanban-column {
+    width: min(300px, 85vw);
+    min-width: min(300px, 85vw);
   }
 }

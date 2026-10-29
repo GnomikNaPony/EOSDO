@@ -9,6 +9,7 @@ export interface User {
   department: string;
   role: string;
   email: string;
+  demo_id?: string;
 }
 export interface Workspace {
   organization: string;
@@ -26,6 +27,9 @@ export function publicUser(account: RecordData): User {
     department: String(account.department),
     role: String(account.role),
     email: String(account.email),
+    ...(typeof account.demo_id === "string"
+      ? { demo_id: account.demo_id }
+      : {}),
   };
 }
 export function sessionToken(request: FastifyRequest) {
@@ -59,7 +63,7 @@ export async function currentUser(
 ) {
   const token = sessionToken(request);
   const id = token ? await services.redis.get(`eosdo:session:${token}`) : null;
-  const account = id ? await store.get(id, "account") : undefined;
+  const account = id ? await store.get(id, "account", true) : undefined;
   if (!account) return null;
   return publicUser(account);
 }

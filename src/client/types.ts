@@ -1,4 +1,5 @@
 export interface User {
+  demo_id?: string;
   id: string;
   name: string;
   role: string;

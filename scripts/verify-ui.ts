@@ -30,7 +30,7 @@ try {
   });
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto(address);
+  await page.goto(address + "/login");
   await page.locator('[name="email"]').fill("browser@example.test");
   await page.locator('[name="password"]').fill("browser-test-password");
   await page.locator('[name="name"]').fill("Оператор проверки");
@@ -201,7 +201,7 @@ try {
     path: "test-results/solid-mobile.png",
     fullPage: true,
   });
-  await page.goto(address + "/#/knowledge");
+  await page.goto(address + "/login#/knowledge");
   await page
     .getByRole("heading", { name: "Данные из документов", exact: true })
     .waitFor();
@@ -225,9 +225,151 @@ try {
     path: "test-results/intelligence-pending-mobile.png",
     fullPage: true,
   });
+  // Public demo creates a fresh private identity on every full page load.
+  await page.goto(address + "/");
+  await page
+    .getByRole("heading", { name: "Все документы", exact: true })
+    .waitFor();
+  const demoFirst = (await (
+    await page.request.get(address + "/api/bootstrap")
+  ).json()) as {
+    user: { id: string };
+    documents: { id: string; title: string }[];
+    templates: unknown[];
+  };
+  if (
+    !demoFirst.documents.length ||
+    !demoFirst.templates.length ||
+    demoFirst.user.id === initial.user.id
+  )
+    throw new Error("Demo is missing private example documents/templates");
+  const demoDocument = demoFirst.documents[0]!;
+  await page
+    .getByRole("link", { name: demoDocument.title, exact: true })
+    .first()
+    .click();
+  await page.getByRole("tab", { name: "Файлы и версии", exact: true }).click();
+  await page
+    .getByRole("link", { name: "Скачать оригинал", exact: true })
+    .first()
+    .waitFor();
+  await page.reload();
+  await page
+    .getByRole("heading", { name: "Все документы", exact: true })
+    .waitFor();
+  const demoSecond = (await (
+    await page.request.get(address + "/api/bootstrap")
+  ).json()) as typeof demoFirst;
+  if (
+    demoSecond.user.id === demoFirst.user.id ||
+    demoSecond.documents.some((document) => document.id === demoDocument.id)
+  )
+    throw new Error("Reload reused the previous demo identity/documents");
+  if (
+    (await page.request.get(address + "/api/documents/" + demoDocument.id)).ok()
+  )
+    throw new Error("New demo can read the previous demo document");
+  for (const width of [360, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    const assertFits = async () => {
+      if (
+        await page.evaluate(
+          () => document.documentElement.scrollWidth > window.innerWidth + 1,
+        )
+      )
+        throw new Error(`Page overflows at ${width}px: ${page.url()}`);
+    };
+    await assertFits();
+    const menu = page.getByRole("button", {
+      name: "Показать / скрыть навигацию",
+      exact: true,
+    });
+    await menu.click();
+    await page
+      .locator(".sidebar .nav-link")
+      .filter({ hasText: "Созданные мной" })
+      .click();
+    await page
+      .getByRole("heading", { name: "Созданные мной", exact: true })
+      .waitFor();
+    if (
+      await page
+        .locator(".application")
+        .evaluate((element) => element.classList.contains("mobile-open"))
+    )
+      throw new Error(
+        "Mobile navigation stayed open after selecting a section",
+      );
+    await page
+      .getByRole("link", { name: demoSecond.documents[0]!.title, exact: true })
+      .first()
+      .click();
+    await page
+      .getByRole("tab", { name: "Основные реквизиты", exact: true })
+      .waitFor();
+    await assertFits();
+    await page
+      .getByRole("tab", { name: "Файлы и версии", exact: true })
+      .click();
+    await page
+      .getByRole("link", { name: "Скачать оригинал", exact: true })
+      .first()
+      .waitFor();
+    await assertFits();
+    await page.screenshot({
+      path: `test-results/demo-mobile-${width}.png`,
+      fullPage: true,
+    });
+    await page.getByRole("link", { name: "К списку", exact: false }).click();
+    await page
+      .getByRole("button", { name: "Создать проект документа", exact: true })
+      .click();
+    await page.getByRole("dialog").waitFor();
+    await assertFits();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Закрыть", exact: true })
+      .click();
+  }
+  await page
+    .getByRole("button", { name: "Показать / скрыть навигацию", exact: true })
+    .click();
+  await page.getByRole("link", { name: "Свой аккаунт", exact: true }).click();
+  await page.locator('[name="email"]').waitFor();
+  await page.goto(address + "/");
+  await page
+    .getByRole("heading", { name: "Все документы", exact: true })
+    .waitFor();
+  const beforeQr = (
+    (await (
+      await page.request.get(address + "/api/bootstrap")
+    ).json()) as typeof demoFirst
+  ).user.id;
+  await page.goto(address + "/demo");
+  await page
+    .getByRole("img", { name: `QR-код: ${address}/`, exact: true })
+    .waitFor();
+  const target = page.getByRole("textbox", {
+    name: "Ссылка на демо",
+    exact: true,
+  });
+  if ((await target.inputValue()) !== address + "/")
+    throw new Error("QR destination differs from the site origin");
+  if (
+    (await (await page.request.get(address + "/api/bootstrap")).json()).user
+      .id !== beforeQr
+  )
+    throw new Error("QR service page created a demo profile");
+  await page
+    .locator(".demo-qr")
+    .screenshot({ path: "test-results/demo-qr-code.png" });
+  await page.screenshot({
+    path: "test-results/demo-qr-mobile.png",
+    fullPage: true,
+  });
   if (errors.length) throw new Error(errors.join("\n"));
   console.log(
-    "UI passed: register, empty workspace, create, manual example upload, exact download/profile author, logout/login/reload, desktop/mobile, Knowledge pending-index search; no page errors.",
+    "UI passed: register, empty workspace, create, manual example upload, exact download/profile author, logout/login/reload, desktop/mobile, Knowledge pending-index search, fresh private demo on reload, mobile navigation/cards/modal at 360/390px, public QR page; no page errors.",
   );
 } finally {
   for (const context of browser?.contexts() ?? []) {

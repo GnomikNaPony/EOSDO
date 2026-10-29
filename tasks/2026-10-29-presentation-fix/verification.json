@@ -1,0 +1,10 @@
+{
+  "slides": 7,
+  "in_bounds_shapes": 106,
+  "valid_relationship_targets": 58,
+  "source_sha256": "6c815e59f68fb9be22c790933508337b01983a54dd7c9e70f34fe12082904dce",
+  "output_sha256": "6acac0895686542efe8ae96d23abb7035fcebcb1eaa4d45296f7543259e6bdaa",
+  "zip_crc": "passed",
+  "xml": "passed",
+  "source_unchanged": true
+}

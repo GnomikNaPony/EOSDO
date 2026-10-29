@@ -13,6 +13,9 @@ import type { Bootstrap, Document, Template, FileSearchResults } from "./types";
 import { labels } from "./domain";
 function createAppStore() {
   const [data, setData] = createSignal<Bootstrap>();
+  const [ready, setReady] = createSignal(false);
+  const demoMode =
+    location.pathname !== "/login" && location.pathname !== "/login/";
   const [doc, setDoc] = createSignal<Document>();
   const [section, setSection] = createSignal("all");
   const [tab, setTab] = createSignal("general");
@@ -164,11 +167,28 @@ function createAppStore() {
     }
     setMobile(false);
   }
-  onMount(() => {
-    void run(async () => {
+  async function initialize() {
+    setReady(false);
+    await run(async () => {
+      if (demoMode) {
+        await api("/api/auth/demo", {});
+        history.replaceState(
+          null,
+          "",
+          location.pathname + location.search + "#/all",
+        );
+      }
       await refresh();
+      if (!demoMode && data()?.user?.demo_id) {
+        await api("/api/auth/logout", {});
+        await refresh();
+      }
       if (!data()?.setup_required && !data()?.auth_required) await route();
+      setReady(true);
     });
+  }
+  onMount(() => {
+    void initialize();
     const handler = () => void run(route);
     window.addEventListener("hashchange", handler);
     onCleanup(() => window.removeEventListener("hashchange", handler));
@@ -248,6 +268,9 @@ function createAppStore() {
   };
 
   return {
+    ready,
+    initialize,
+    demoMode,
     data,
     setData,
     doc,

@@ -1,4 +1,7 @@
 import { SQL, RedisClient, S3Client } from "bun";
+import { AsyncLocalStorage } from "node:async_hooks";
+
+export const demoScope = new AsyncLocalStorage<string>();
 import { drizzle } from "drizzle-orm/bun-sql";
 import { and, eq, sql as query } from "drizzle-orm";
 import { records, settings, type RecordData } from "./schema";
@@ -40,28 +43,42 @@ CREATE TRIGGER eosdo_version_immutable BEFORE UPDATE OR DELETE ON eosdo_records 
 }
 export class Store {
   constructor(public db: Pick<Database, "select" | "insert" | "delete">) {}
+  scopeFilter() {
+    return query`coalesce(${records.data}->>'demo_id', '') = ${demoScope.getStore() ?? ""}`;
+  }
   async list(kind: string, documentId?: string) {
     const rows = await this.db
       .select()
       .from(records)
       .where(
-        documentId
-          ? and(eq(records.kind, kind), eq(records.documentId, documentId))
-          : eq(records.kind, kind),
+        and(
+          this.scopeFilter(),
+          eq(records.kind, kind),
+          documentId ? eq(records.documentId, documentId) : undefined,
+        ),
       )
       .orderBy(records.createdAt);
-    return rows.map((r) => r.data);
+    return rows.map((r) => r.data).filter((data) => this.visible(data));
   }
-  async get(id: string, kind?: string): Promise<RecordData | undefined> {
+  visible(data: RecordData) {
+    return (data.demo_id ?? "") === (demoScope.getStore() ?? "");
+  }
+  async get(
+    id: string,
+    kind?: string,
+    unscoped = false,
+  ): Promise<RecordData | undefined> {
     const [row] = await this.db
       .select()
       .from(records)
       .where(
-        kind
-          ? and(eq(records.id, id), eq(records.kind, kind))
-          : eq(records.id, id),
+        and(
+          unscoped ? undefined : this.scopeFilter(),
+          eq(records.id, id),
+          kind ? eq(records.kind, kind) : undefined,
+        ),
       );
-    return row?.data;
+    return row && (unscoped || this.visible(row.data)) ? row.data : undefined;
   }
   async put(
     kind: string,
@@ -69,6 +86,8 @@ export class Store {
     documentId?: string,
     owner?: string,
   ) {
+    const scope = demoScope.getStore();
+    if (scope) data = { ...data, demo_id: scope };
     await this.db
       .insert(records)
       .values({
@@ -81,13 +100,17 @@ export class Store {
       .onConflictDoUpdate({
         target: records.id,
         set: { data: query`${data}::jsonb` },
+        setWhere: this.scopeFilter(),
       });
     return data;
   }
   async remove(id: string) {
-    await this.db.delete(records).where(eq(records.id, id));
+    await this.db
+      .delete(records)
+      .where(and(eq(records.id, id), this.scopeFilter()));
   }
   async setting(key: string, fallback: RecordData): Promise<RecordData> {
+    if (demoScope.getStore()) key = `demo:${demoScope.getStore()}:${key}`;
     const [row] = await this.db
       .select()
       .from(settings)
@@ -95,6 +118,7 @@ export class Store {
     return row?.data ?? fallback;
   }
   async set(key: string, data: RecordData) {
+    if (demoScope.getStore()) key = `demo:${demoScope.getStore()}:${key}`;
     await this.db
       .insert(settings)
       .values({ key, data: query`${data}::jsonb` })

@@ -600,11 +600,11 @@ export function startIntelligenceWorker(
     inflight = (async () => {
       // Only candidates are loaded; ready vectors do not enter the scheduling scan.
       const queued =
-        await services.sql`SELECT data->>'version_id' AS version_id FROM eosdo_records WHERE kind='intelligence' AND ((data->>'status')='queued' OR ((data->>'status')='processing' AND COALESCE((data->>'lease_until')::bigint,0)<${Date.now()})) ORDER BY created_at LIMIT 1`;
+        await services.sql`SELECT data->>'version_id' AS version_id FROM eosdo_records WHERE kind='intelligence' AND NOT (data ? 'demo_id') AND ((data->>'status')='queued' OR ((data->>'status')='processing' AND COALESCE((data->>'lease_until')::bigint,0)<${Date.now()})) ORDER BY created_at LIMIT 1`;
       let id = queued[0]?.version_id as string | undefined;
       if (!id) {
         const fresh =
-          await services.sql`SELECT v.id FROM eosdo_records v LEFT JOIN eosdo_records i ON i.id=('intelligence:' || v.id) AND i.kind='intelligence' WHERE v.kind='version' AND i.id IS NULL ORDER BY v.created_at LIMIT 1`;
+          await services.sql`SELECT v.id FROM eosdo_records v LEFT JOIN eosdo_records i ON i.id=('intelligence:' || v.id) AND i.kind='intelligence' WHERE v.kind='version' AND NOT (v.data ? 'demo_id') AND i.id IS NULL ORDER BY v.created_at LIMIT 1`;
         id = fresh[0]?.id as string | undefined;
       }
       if (id && !stopping)

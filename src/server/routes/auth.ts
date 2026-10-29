@@ -1,3 +1,4 @@
+import { createDemo } from "../demo";
 import type { FastifyInstance } from "fastify";
 import {
   type Context,
@@ -26,6 +27,25 @@ function password(value: unknown) {
   return value;
 }
 export function authRoutes(app: FastifyInstance, { services, store }: Context) {
+  app.post("/api/auth/demo", async (request, reply) => {
+    const limiter = `eosdo:demo:${request.ip}`;
+    const attempts = Number(
+      await services.redis.send("EVAL", [
+        "local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],60) end; return n",
+        "1",
+        limiter,
+      ]),
+    );
+    if (attempts > 30)
+      throw new Problem(
+        429,
+        "Слишком много запусков демо. Повторите через минуту",
+      );
+    const account = await createDemo(services);
+    const user = publicUser(account);
+    await createSession(services, reply, user);
+    return { user };
+  });
   app.post("/api/auth/register", async (request, reply) => {
     const b = body(request);
     if (b.role !== undefined)

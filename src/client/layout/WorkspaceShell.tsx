@@ -1,4 +1,4 @@
-import { For, type ParentProps } from "solid-js";
+import { createSignal, For, Show, onCleanup, type ParentProps } from "solid-js";
 import { useApp } from "../app-store";
 import { Button, Icon } from "../components/ui";
 import { api } from "../api";
@@ -6,6 +6,7 @@ import { date, nav } from "../domain";
 export function WorkspaceShell(props: ParentProps) {
   const {
     data,
+    demoMode,
     doc,
     section,
     collapsed,
@@ -19,6 +20,16 @@ export function WorkspaceShell(props: ParentProps) {
     setTemplate,
     setDiff,
   } = useApp();
+  const viewport = window.matchMedia("(max-width: 800px)");
+  const [compact, setCompact] = createSignal(viewport.matches);
+  const updateViewport = () => setCompact(viewport.matches);
+  viewport.addEventListener("change", updateViewport);
+  onCleanup(() => viewport.removeEventListener("change", updateViewport));
+  const closeOnEscape = (event: KeyboardEvent) => {
+    if (event.key === "Escape") setMobile(false);
+  };
+  window.addEventListener("keydown", closeOnEscape);
+  onCleanup(() => window.removeEventListener("keydown", closeOnEscape));
   return (
     <div
       class={`application ${collapsed() ? "nav-collapsed" : ""} ${mobile() ? "mobile-open" : ""}`}
@@ -27,10 +38,10 @@ export function WorkspaceShell(props: ParentProps) {
         <button
           class="icon-button"
           aria-label="Показать / скрыть навигацию"
+          aria-controls="workspace-navigation"
+          aria-expanded={compact() ? mobile() : !collapsed()}
           onClick={() =>
-            window.innerWidth < 800
-              ? setMobile(!mobile())
-              : setCollapsed(!collapsed())
+            compact() ? setMobile(!mobile()) : setCollapsed(!collapsed())
           }
         >
           <Icon name="menu" />
@@ -48,8 +59,10 @@ export function WorkspaceShell(props: ParentProps) {
             <Icon name="bell" />
           </a>
           <span class="top-divider" />
-          <Icon name="user" />
-          <span>{data()?.user?.name}</span>
+          <span class="topbar-user" title={data()?.user?.name}>
+            <Icon name="user" />
+            <span>{data()?.user?.name}</span>
+          </span>
           <Button
             onClick={() =>
               void run(async () => {
@@ -67,7 +80,11 @@ export function WorkspaceShell(props: ParentProps) {
           </Button>
         </div>
       </header>
-      <aside class="sidebar" aria-label="Разделы системы">
+      <aside
+        id="workspace-navigation"
+        class="sidebar"
+        aria-label="Разделы системы"
+      >
         <div class="organization">
           <Icon name="tree" />
           <span>
@@ -117,8 +134,17 @@ export function WorkspaceShell(props: ParentProps) {
           </a>
         </nav>
         <div class="sidebar-bottom">
-          <span class="connection-dot" />
-          ЕОСДО
+          <Show when={demoMode}>
+            <p class="demo-session-label">
+              <span class="connection-dot" /> Демо · новый профиль при открытии
+            </p>
+          </Show>
+          <a class="nav-link" href="/demo">
+            QR-код демо
+          </a>
+          <a class="nav-link" href="/login">
+            Свой аккаунт
+          </a>
         </div>
       </aside>
       <button

@@ -299,13 +299,14 @@ export function Registry() {
                     <Icon name="file" />
                     {d.favorite && "★"}
                   </td>
-                  <td>
+                  <td data-label="Задача">
                     <a href={`#/doc/${encodeURIComponent(d.id)}`}>
                       Рассмотрение
                     </a>
                   </td>
-                  <td>{d.type}</td>
+                  <td data-label="Тип документа">{d.type}</td>
                   <td
+                    data-label="Срок исполнения"
                     class={
                       d.due < new Date().toISOString().slice(0, 10) &&
                       !["approved", "done"].includes(d.status)
@@ -315,13 +316,17 @@ export function Registry() {
                   >
                     {date(d.due)}
                   </td>
-                  <td>{date(d.created)}</td>
-                  <td>
+                  <td data-label="Дата получения">{date(d.created)}</td>
+                  <td data-label="Рег. номер / дата">
                     <a href={`#/doc/${encodeURIComponent(d.id)}`}>{d.number}</a>
                     <small>{date(d.created)}</small>
                   </td>
-                  <td>{labels[d.status]}</td>
-                  <td>
+                  <td data-label="Статус">
+                    <span class={`document-status status-${d.status}`}>
+                      {labels[d.status]}
+                    </span>
+                  </td>
+                  <td data-label="Документ" class="document-summary">
                     <a href={`#/doc/${encodeURIComponent(d.id)}`}>{d.title}</a>{" "}
                     <a
                       href={`#/doc/${encodeURIComponent(d.id)}`}
@@ -381,7 +386,7 @@ export function Registry() {
                       </small>
                     </Show>
                   </td>
-                  <td>
+                  <td data-label="Автор">
                     {person(d.owner_id)}
                     <small>{d.department}</small>
                   </td>
