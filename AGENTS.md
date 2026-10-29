@@ -23,4 +23,4 @@
 
 ## Текущее состояние
 
-Это приложение ЕОСДО на TypeScript/Bun/Solid/Fastify. Инфраструктура PostgreSQL/Redis/MinIO запускается Docker Compose, UI и сервер — вне Docker; целевая платформа Railway. Команды определены в docs/verification.md. CI добавлен, но внешняя защита слияния не подтверждена. Источник протокола Swiss Clock закреплён в docs/project.md.
+Это приложение ЕОСОД на TypeScript/Bun/Solid/Fastify. Инфраструктура PostgreSQL/Redis/MinIO запускается Docker Compose, UI и сервер — вне Docker; целевая платформа Railway. Команды определены в docs/verification.md. CI добавлен, но внешняя защита слияния не подтверждена. Источник протокола Swiss Clock закреплён в docs/project.md.

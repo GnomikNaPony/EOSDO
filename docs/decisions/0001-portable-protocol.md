@@ -1,6 +1,6 @@
 # Историческое решение upstream Swiss Clock
 
-Этот ADR описывает исходный boilerplate, а не решение владельца ЕОСДО. Источник: https://github.com/mikenoired/swiss-clock/blob/190c5871a63d883c420c526559f96cf951dfd807/docs/decisions/0001-portable-protocol.md
+Этот ADR описывает исходный boilerplate, а не решение владельца ЕОСОД. Источник: https://github.com/mikenoired/swiss-clock/blob/190c5871a63d883c420c526559f96cf951dfd807/docs/decisions/0001-portable-protocol.md
 
 # ADR-0001: переносимый протокол с отдельным подключением проверок
 

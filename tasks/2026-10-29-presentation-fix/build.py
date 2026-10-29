@@ -7,7 +7,7 @@ from lxml import etree as E
 
 ROOT = Path(__file__).resolve().parents[2]
 SRC = Path('/Users/mikevetkal/.t3/userdata/attachments/aaefe396-225f-4dd4-8ccb-ba43d5c7d38c-007d4c26-5a1d-4c13-8477-659994a83bc4-pptx.pptx')
-OUT = ROOT / 'artifacts/ЕОСДО_ИТ_КоР_2026_исправленная.pptx'
+OUT = ROOT / 'artifacts/ЕОСОД_ИТ_КоР_2026_исправленная.pptx'
 NS = {'p':'http://schemas.openxmlformats.org/presentationml/2006/main','a':'http://schemas.openxmlformats.org/drawingml/2006/main','r':'http://schemas.openxmlformats.org/officeDocument/2006/relationships'}
 EMU=914400
 NAVY='163D72'; BLUE='0072BC'; GRAY='52657B'; DARK='333333'; PALE='F1F6FB'
@@ -72,7 +72,7 @@ slides={}
 # 1: preserve original title background and author identities.
 r=E.fromstring(data['ppt/slides/slide1.xml']);t=r.find('p:cSld/p:spTree',NS)
 for node in list(t)[2:]:t.remove(node)
-text(t,.88,2.10,10.4,.70,'ЕОСДО 3.0',38,'FFFFFF',True)
+text(t,.88,2.10,10.4,.70,'ЕОСОД 3.0',38,'FFFFFF',True)
 text(t,.9,2.98,10.3,1.05,'Меньше повторного ввода.\nБыстрее поиск нужной переписки.',27,'FFFFFF',True)
 text(t,.92,4.28,9.8,.5,'Команда «Эффективность» • прототип и предложение пилота',18,'FFFFFF')
 text(t,.92,5.00,10.9,1.13,'Брекер Е.Е. | Ростовская АЭС, начальник участка программного обеспечения\nКико А.Г. | Студент ВИТИ НИЯУ МИФИ\nВеткаль М.М. | Студент филиала ДГТУ в Волгодонске',14,'FFFFFF')

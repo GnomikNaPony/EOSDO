@@ -11,7 +11,7 @@ export function Auth() {
   return (
     <main class="min-h-dvh bg-slate-100 flex items-center justify-center p-5">
       <section class="bg-white border border-slate-200 shadow-sm w-full max-w-lg p-8">
-        <p class="text-blue-800 font-semibold">ЕОСДО</p>
+        <p class="text-blue-800 font-semibold">ЕОСОД</p>
         <h1 class="text-2xl font-semibold mt-3 mb-2">
           {registering()
             ? "Создайте учётную запись"

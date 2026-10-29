@@ -33,7 +33,7 @@ function Workspace() {
       fallback={
         <main class="demo-start" aria-busy={busy()}>
           <div class="demo-start-card">
-            <p class="demo-eyebrow">ЕОСДО</p>
+            <p class="demo-eyebrow">ЕОСОД</p>
             <h1>
               {demoMode
                 ? "Готовим ваше рабочее пространство"

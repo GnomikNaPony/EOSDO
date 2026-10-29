@@ -4,7 +4,7 @@ import hashlib,json,posixpath,zipfile
 from lxml import etree as E
 ROOT=Path(__file__).resolve().parents[2]
 SRC=Path('/Users/mikevetkal/.t3/userdata/attachments/aaefe396-225f-4dd4-8ccb-ba43d5c7d38c-007d4c26-5a1d-4c13-8477-659994a83bc4-pptx.pptx')
-OUT=ROOT/'artifacts/ЕОСДО_ИТ_КоР_2026_исправленная.pptx'
+OUT=ROOT/'artifacts/ЕОСОД_ИТ_КоР_2026_исправленная.pptx'
 NS={'p':'http://schemas.openxmlformats.org/presentationml/2006/main','a':'http://schemas.openxmlformats.org/drawingml/2006/main'}
 expected='6c815e59f68fb9be22c790933508337b01983a54dd7c9e70f34fe12082904dce'
 assert hashlib.sha256(SRC.read_bytes()).hexdigest()==expected

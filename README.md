@@ -1,4 +1,4 @@
-# ЕОСДО
+# ЕОСОД
 
 Рабочее пространство документов на TypeScript, Bun 1.4.4, Solid JS, Tailwind, Fastify и Drizzle. PostgreSQL хранит данные, Redis — сессии, MinIO S3 — оригиналы файлов. UI основан на [EOSDO1.0](https://github.com/GnomikNaPony/EOSDO1.0/tree/15a3b97d34b7d0ad64f89194710552441e1b9873).
 
@@ -28,7 +28,7 @@ bun run start
 
 MinIO собирается из официального исходного release: его исторические публичные образы недоступны. Первая сборка требует сети. Проверенный собственный образ можно выбрать через `MINIO_IMAGE`.
 
-Разработка — `bun run dev:server` и `bun run dev` в двух терминалах. Vite проксирует `/api` на 8765. `Запустить ЕОСДО.command` — macOS launcher TypeScript скрипта. Деплой Railway описан в [docs/railway.md](docs/railway.md); публикация в этой задаче не выполнялась.
+Разработка — `bun run dev:server` и `bun run dev` в двух терминалах. Vite проксирует `/api` на 8765. `Запустить ЕОСОД.command` — macOS launcher TypeScript скрипта. Деплой Railway описан в [docs/railway.md](docs/railway.md); публикация в этой задаче не выполнялась.
 
 ## Профили и документы
 

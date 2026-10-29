@@ -24,7 +24,7 @@ export function DemoPage() {
     <main class="demo-page">
       <header class="demo-page-header">
         <a class="demo-wordmark" href="/">
-          ЕОСДО<span>Работа с документами</span>
+          ЕОСОД<span>Работа с документами</span>
         </a>
         <a href="/login">Вход в аккаунт</a>
       </header>
@@ -37,7 +37,7 @@ export function DemoPage() {
             Даже на телефоне.
           </h1>
           <p class="demo-description">
-            Наведите камеру на QR-код и попробуйте ЕОСДО: откройте документ,
+            Наведите камеру на QR-код и попробуйте ЕОСОД: откройте документ,
             изучите версии или создайте свой.
           </p>
           <p class="demo-private-note">
@@ -85,7 +85,7 @@ export function DemoPage() {
         </div>
       </section>
       <footer class="demo-page-footer">
-        ЕОСДО · Реестр, версии и согласование документов
+        ЕОСОД · Реестр, версии и согласование документов
       </footer>
     </main>
   );

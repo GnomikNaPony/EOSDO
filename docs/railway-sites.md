@@ -1,10 +1,10 @@
-# ЕОСДО: работающие сайты Railway
+# ЕОСОД: работающие сайты Railway
 
 Размещение выполнено 29.10.2026 по поручению владельца. Цель выбрана владельцем: Mike Noired's Projects → steadfast-rejoicing → production. Новые сервисы не используют базы/Redis существующих приложений.
 
 | Назначение | Адрес | Service ID | Проверенный deployment |
 | --- | --- | --- | --- |
-| Итоговая ЕОСДО | https://eosdo-current-production.up.railway.app | 3d6657d7-de58-4e9d-8ce1-b6ceb20b7193 | 8583ebc1-7ee5-442b-bf35-5619fd42377c |
+| Итоговая ЕОСОД | https://eosdo-current-production.up.railway.app | 3d6657d7-de58-4e9d-8ce1-b6ceb20b7193 | 8583ebc1-7ee5-442b-bf35-5619fd42377c |
 | Исходный демонстрационный интерфейс | https://eosdo-original-production.up.railway.app | ef861749-c4ad-4450-83d9-8ef366327ca4 | 94dc56b1-36d9-4b30-b2de-670e1a6888a2 |
 
 Project ID: `9fc3f5f1-1ea4-4d2d-816b-8225dd610695`. Environment ID: `519dee81-ff21-4096-b29c-fa578aeb06a1`.

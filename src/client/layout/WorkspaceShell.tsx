@@ -48,7 +48,7 @@ export function WorkspaceShell(props: ParentProps) {
         </button>
         <a href="#/all" class="brand">
           <Icon name="file" />
-          <span>ЕОСДО</span>
+          <span>ЕОСОД</span>
         </a>
         <div class="system-name">Рабочее пространство документов</div>
         <div class="topbar-right">
