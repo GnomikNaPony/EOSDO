@@ -1,3 +1,4 @@
+import { DocumentNormocontrol } from "./document/DocumentNormocontrol";
 import { DocumentGeneral } from "./document/DocumentGeneral";
 import { DocumentVersions } from "./document/DocumentVersions";
 import { DocumentComments } from "./document/DocumentComments";
@@ -43,6 +44,7 @@ export function Detail() {
             ["versions", "Файлы и версии"],
             ["approval", "Согласование и подписание"],
             ["comments", "Замечания"],
+            ["normocontrol", "Нормоконтроль"],
             ["ai", "ИИ-проверка"],
             ["linked", "Связанные документы"],
             ["history", "История"],
@@ -64,6 +66,7 @@ export function Detail() {
         <DocumentVersions />
         <DocumentComments />
         <DocumentApproval />
+        <DocumentNormocontrol />
         <DocumentAi />
         <DocumentHistory />
         <DocumentLinked />

@@ -1,3 +1,4 @@
+import { normocontrol } from "../src/server/normocontrol";
 import { describe, expect, test } from "bun:test";
 import { crc32, deflateRawSync } from "node:zlib";
 import { searchableText as extractText } from "../src/server/search";
@@ -232,4 +233,30 @@ describe("shared document extraction", () => {
     expect(results[1]?.text).toContain("Второй документ");
     expect(results[1]?.text).not.toContain("heliotrope");
   });
+});
+
+test("DOCX norm control reads namespaces, structure, text and keeps bytes intact", async () => {
+  const input = docxFile(
+    paragraph("1. Текст  документа , проверка.") + "<w:tbl/><w:sectPr/>",
+  );
+  const original = Buffer.from(input);
+  const report = await normocontrol("rules.docx", input);
+  expect(report.state).toBe("ready");
+  expect(report.findings.map((f) => f.category)).toEqual([
+    "spacing",
+    "punctuation",
+    "numbering",
+    "table",
+    "layout",
+    "fields",
+    "headers",
+  ]);
+  expect(input).toEqual(original);
+  const styled = docxFile(
+    '<w:p><w:pPr><w:pStyle w:val="Body"/><w:numPr/></w:pPr><w:r><w:t>1. ' +
+      "Длинный текст ".repeat(10) +
+      '</w:t><w:fldChar w:fldCharType="begin"/></w:r></w:p><w:sectPr><w:pgMar w:left="1000"/></w:sectPr>',
+  );
+  const clean = await normocontrol("styled.docx", styled);
+  expect(clean.findings.map((f) => f.category)).toEqual(["headers"]);
 });

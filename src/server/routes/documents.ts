@@ -1,3 +1,4 @@
+import { normocontrol } from "../normocontrol";
 import { lineDiff, type VersionDiff } from "../../shared/version-diff";
 import { directory } from "../workspace";
 import type { FastifyInstance } from "fastify";
@@ -164,6 +165,7 @@ export function documentRoutes(app: FastifyInstance, context: Context) {
         throw new Problem(413, "Файл должен быть непустым и не больше 20 МБ");
       const sha256 = new Bun.CryptoHasher("sha256").update(bytes).digest("hex");
       const indexed = await searchableText(filename, bytes);
+      const report = await normocontrol(filename, bytes, indexed);
       const id = uid();
       const key = `versions/${request.params.id}/${id}`;
       await services.s3.write(key, bytes, { type: "application/octet-stream" });
@@ -197,6 +199,15 @@ export function documentRoutes(app: FastifyInstance, context: Context) {
               message,
               created: now(),
               ...indexed,
+            },
+            request.params.id,
+          );
+          await s.put(
+            "normocontrol",
+            {
+              id: `normocontrol:${id}`,
+              version_id: id,
+              report: JSON.parse(JSON.stringify(report)),
             },
             request.params.id,
           );
@@ -339,6 +350,39 @@ export function documentRoutes(app: FastifyInstance, context: Context) {
           await services.s3.file(String(version.object_key)).arrayBuffer(),
         ),
       );
+    },
+  );
+  app.post<{ Params: { id: string } }>(
+    "/api/versions/:id/normocontrol",
+    async (request, reply) => {
+      const { user } = await session(request, reply);
+      const version = await store.get(request.params.id, "version");
+      if (!version) throw new Problem(404, "Версия не найдена");
+      await document(store, String(version.document_id), user);
+      const bytes = new Uint8Array(
+        await services.s3.file(String(version.object_key)).arrayBuffer(),
+      );
+      const report = await normocontrol(String(version.filename), bytes);
+      await services.db.transaction(async (tx) => {
+        await tx.execute("SELECT pg_advisory_xact_lock(874121)");
+        const s = new Store(tx);
+        await document(s, String(version.document_id), user);
+        await s.put(
+          "normocontrol",
+          {
+            id: `normocontrol:${version.id}`,
+            version_id: version.id!,
+            report: JSON.parse(JSON.stringify(report)),
+          },
+          String(version.document_id),
+        );
+        await s.log(
+          String(version.document_id),
+          user.id,
+          `Нормоконтроль версии ${version.number}`,
+        );
+      });
+      return report;
     },
   );
   app.post<{ Params: { id: string } }>(

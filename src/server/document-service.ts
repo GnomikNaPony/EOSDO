@@ -28,6 +28,7 @@ export async function detail(store: Store, id: string, user: User) {
   const versions = (await store.list("version", id)).sort(
     (a, b) => Number(b.number) - Number(a.number),
   );
+  const normocontrol = await store.list("normocontrol", id);
   const comments = await store.list("comment", id);
   const replies = await store.list("reply", id);
   const events = await store.list("comment_event", id);
@@ -37,7 +38,11 @@ export async function detail(store: Store, id: string, user: User) {
     versions: versions.map((version) => {
       const publicVersion = { ...version };
       delete publicVersion.object_key;
-      return publicVersion;
+      return {
+        ...publicVersion,
+        normocontrol:
+          normocontrol.find((r) => r.version_id === version.id)?.report ?? null,
+      };
     }),
     comments: comments.map((comment) => ({
       ...comment,

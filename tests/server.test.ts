@@ -202,7 +202,7 @@ integration(
         headers: secondHeaders,
         payload: {
           filename: "source.txt",
-          content: source.toString("base64"),
+          content: Buffer.from("Текст  документа , готов.").toString("base64"),
           message: "Собственный файл",
         },
       });
@@ -216,6 +216,11 @@ integration(
       expect(ownDetail.owner_id).toBe(second.json().user.id);
       expect(ownDetail.versions[0].author_id).toBe(second.json().user.id);
       expect(ownDetail.curator_id).toBe(boot.user.id);
+      expect(
+        ownDetail.versions[0].normocontrol.findings.map(
+          (f: { category: string }) => f.category,
+        ),
+      ).toEqual(["spacing", "punctuation"]);
       const uploaded = await app.inject({
         method: "POST",
         url: `/api/documents/${id}/versions`,
@@ -236,6 +241,35 @@ integration(
       expect(detail.owner_id).toBe(boot.user.id);
       expect(detail.versions[0].author_id).toBe(boot.user.id);
       expect(detail.versions[0].object_key).toBeUndefined();
+      expect(detail.versions[0].normocontrol.state).toBe("ready");
+      expect(detail.versions[0].normocontrol.findings).toEqual([]);
+      expect(detail.checks[0].status).toBe("error"); // Empty AI rules do not block offline norm control.
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: `/api/versions/${versionId}/normocontrol`,
+            headers: secondHeaders,
+            payload: {},
+          })
+        ).statusCode,
+      ).toBe(403);
+      const beforeRecheck = await store.get(versionId, "version");
+      await store.remove(`normocontrol:${versionId}`); // A legacy version without a report.
+      const recheck = await app.inject({
+        method: "POST",
+        url: `/api/versions/${versionId}/normocontrol`,
+        headers,
+        payload: {},
+      });
+      expect(recheck.statusCode).toBe(200);
+      expect(recheck.json().state).toBe("ready");
+      expect(await store.get(versionId, "version")).toEqual(beforeRecheck);
+      expect(
+        (await app.inject({ url: `/api/documents/${id}`, headers })).json()
+          .versions[0].normocontrol.state,
+      ).toBe("ready");
+
       const download = await app.inject({
         url: `/api/versions/${versionId}/file`,
         headers,

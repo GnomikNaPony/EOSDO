@@ -31,7 +31,8 @@
     "mammoth": "1.13.0",
     "qrcode-generator": "2.0.4",
     "solid-js": "1.9.17",
-    "unpdf": "1.9.1"
+    "unpdf": "1.9.1",
+    "@xmldom/xmldom": "0.8.15"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.3",

@@ -22,7 +22,8 @@ function checkedText(text: string): string {
 }
 
 /** Verify bounded ZIP members before Mammoth opens the same immutable OOXML bytes. */
-function validateDocx(bytes: Uint8Array) {
+export function readDocx(bytes: Uint8Array) {
+  const entries = new Map<string, string>();
   const data = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let end = -1;
   for (
@@ -126,6 +127,15 @@ function validateDocx(bytes: Uint8Array) {
       Buffer.from(decoded).includes(Buffer.from("<!DOCTYPE"))
     )
       fail("DOCX с объявлениями DTD не поддерживается.");
+    if (
+      /^word\/(?:document|header\d+|footer\d+|footnotes|endnotes|comments)\.xml$/.test(
+        name,
+      )
+    )
+      entries.set(
+        name,
+        new TextDecoder("utf-8", { fatal: true }).decode(decoded),
+      );
     position = next;
   }
   if (
@@ -134,6 +144,7 @@ function validateDocx(bytes: Uint8Array) {
     !names.has("[Content_Types].xml")
   )
     fail("Файл не содержит корректного документа DOCX.");
+  return entries;
 }
 
 async function pdfText(bytes: Uint8Array): Promise<string> {
@@ -204,7 +215,7 @@ export async function extractText(
         );
       }
     } else if (ext === ".docx") {
-      validateDocx(bytes);
+      readDocx(bytes);
       try {
         const result = await mammoth.extractRawText({
           buffer: Buffer.from(bytes),

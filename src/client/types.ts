@@ -1,3 +1,4 @@
+import type { NormocontrolReport } from "../shared/normocontrol";
 export interface User {
   demo_id?: string;
   id: string;
@@ -23,6 +24,7 @@ export interface Profile {
   profile_revision: number;
 }
 export interface Version {
+  normocontrol?: NormocontrolReport | null;
   id: string;
   number: number;
   author_id: string;

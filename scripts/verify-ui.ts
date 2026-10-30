@@ -87,6 +87,46 @@ try {
   ).json()) as { versions: { author_id: string }[] };
   if (detail.versions[0]?.author_id !== initial.user.id)
     throw new Error("Upload is not attributed to the signed-in profile");
+  await page.getByRole("tab", { name: "Нормоконтроль", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "Нормоконтроль документов", exact: true })
+    .waitFor();
+  await page
+    .getByText("Проверка выполнена", { exact: false })
+    .first()
+    .waitFor();
+  await page
+    .getByRole("button", { name: "Повторить нормоконтроль · v1", exact: true })
+    .click();
+  await page
+    .getByText("Изменения сохранены", { exact: true })
+    .first()
+    .waitFor();
+  await mkdir("test-results", { recursive: true });
+  await page.screenshot({
+    path: "test-results/normocontrol-desktop.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForFunction(
+    () =>
+      document.querySelector(".sidebar")!.getBoundingClientRect().right <= 0,
+  );
+  await page.waitForFunction(
+    () =>
+      document.querySelector(".card-section")!.getBoundingClientRect().right <=
+      innerWidth,
+  );
+  await page.screenshot({
+    path: "test-results/normocontrol-mobile.png",
+    fullPage: true,
+  });
+  if (
+    await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)
+  )
+    throw new Error("Normocontrol overflows mobile viewport");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole("tab", { name: "Файлы и версии", exact: true }).click();
   const savedUrl = page.url();
   // Independent before/after fixture: only the deadline line changes.
   const oldLine = "- Срок: [календарная дата]";
